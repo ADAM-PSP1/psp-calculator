@@ -1,8 +1,11 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 
-const FRATE=0.47,FREB=0.47,GU2=1.8868,XCAP=9010,CCAP=15900,MCAP=2650;
-// Rebatable cap: $30,000 is the grossed-up FBT value — actual packagable benefit = $30,000 / 1.8868
-const RCAP=Math.round(30000/GU2*100)/100;
+// FBT constants
+// Rebatable employers: gross FBT = benefit × GU2 × FRATE
+// Rebate = gross FBT × FREB (47%)
+// Net FBT cost to employee = gross FBT × (1 - FREB) = gross FBT × 0.53
+const FRATE=0.47, FREB=0.47, FNET=1-0.47, GU2=1.8868, XCAP=9010, CCAP=15900, MCAP=2650;
+const RCAP=Math.round(30000/GU2*100)/100; // ~$15,899 actual benefit value under $30k grossed-up cap
 const navy="#0f1e2e",green="#22c55e",gdim="#16a34a",gbg="rgba(34,197,94,0.12)",gbor="rgba(34,197,94,0.4)";
 const INP={width:"100%",boxSizing:"border-box",background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 12px",fontSize:13,color:"#1e293b",outline:"none"};
 const LBL={fontSize:12,color:"#64748b",marginBottom:5,display:"block",fontWeight:500};
