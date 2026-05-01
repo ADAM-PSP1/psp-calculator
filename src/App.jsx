@@ -1,6 +1,8 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 
-const FRATE=0.47,FREB=0.47,GU2=1.8868,XCAP=9010,CCAP=15900,MCAP=2650,RCAP=30000;
+const FRATE=0.47,FREB=0.47,GU2=1.8868,XCAP=9010,CCAP=15900,MCAP=2650;
+// Rebatable cap: $30,000 is the grossed-up FBT value — actual packagable benefit = $30,000 / 1.8868
+const RCAP=Math.round(30000/GU2*100)/100;
 const navy="#0f1e2e",green="#22c55e",gdim="#16a34a",gbg="rgba(34,197,94,0.12)",gbor="rgba(34,197,94,0.4)";
 const INP={width:"100%",boxSizing:"border-box",background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 12px",fontSize:13,color:"#1e293b",outline:"none"};
 const LBL={fontSize:12,color:"#64748b",marginBottom:5,display:"block",fontWeight:500};
@@ -441,7 +443,7 @@ export default function App(){
             <div style={{marginTop:12,background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,padding:"9px 14px",fontSize:12,color:"#64748b"}}>
               {empType==="exempt"&&<span>FBT exempt s.57A - general cap <b style={{color:"#1e293b"}}>$9,010</b> - meal cap <b style={{color:"#1e293b"}}>$2,650</b></span>}
               {empType==="charity"&&<span>FBT exempt charitable institution - general cap <b style={{color:"#1e293b"}}>$15,900</b> - meal cap <b style={{color:"#1e293b"}}>$2,650</b></span>}
-              {empType==="rebatable"&&<span>FBT rebatable - grossed-up cap <b style={{color:"#1e293b"}}>$30,000</b> - net FBT passed to employee pre-tax</span>}
+              {empType==="rebatable"&&<span>FBT rebatable — grossed-up cap <b style={{color:"#1e293b"}}>$30,000</b> (actual benefit value <b style={{color:"#1e293b"}}>${Math.round(RCAP).toLocaleString()}</b>) - net FBT passed to employee pre-tax</span>}
               {empType==="full"&&<span>Full FBT payable at <b style={{color:"#1e293b"}}>47%</b> - no concessional cap</span>}
             </div>
           </div>
@@ -487,7 +489,7 @@ export default function App(){
                   </div>
                   <div style={{marginTop:8,fontSize:11,color:"#64748b",background:"#f8fafc",borderRadius:6,padding:"6px 10px",display:"flex",gap:12,flexWrap:"wrap"}}>
                     <span>{bt.gst?"GST applies":"No GST"}</span>
-                    <span>{"Cap: "+(bt.cap==="meal"?"Meal ent $"+MCAP.toLocaleString():bt.cap==="none"?"No cap exempt":empType==="exempt"?"General $"+XCAP.toLocaleString():empType==="charity"?"Charitable $"+CCAP.toLocaleString():empType==="rebatable"?"Rebatable $"+RCAP.toLocaleString():"-")}</span>
+                    <span>{"Cap: "+(bt.cap==="meal"?"Meal ent $"+MCAP.toLocaleString():bt.cap==="none"?"No cap exempt":empType==="exempt"?"General $"+XCAP.toLocaleString():empType==="charity"?"Charitable $"+CCAP.toLocaleString():empType==="rebatable"?"Rebatable $"+Math.round(RCAP).toLocaleString()+" (grossed-up $30,000)":"-")}</span>
                     <span style={{color:green,fontWeight:500}}>{bt.ref}</span>
                   </div>
                   {(item.typeId==="remote_util"||item.typeId==="remote_travel")&&!hasRemHousing&&(
