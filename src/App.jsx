@@ -597,8 +597,7 @@ export default function App(){
                 </tr></thead>
                 <tbody>
                   {mkRows(R,p,isReb).map(([label,a,b,border,hi,bold],i)=>{
-                    const isRebRow=false;
-                    const isFeeRow=label==="Less packaging fee (pre-tax cost)";
+                    const isRebRow=false;                    const isFeeRow=label==="Less packaging fee (pre-tax cost)";
                     const bVal=isFeeRow?b:b;
                     return(
                       <tr key={i} style={{borderTop:border?"2px solid #e2e8f0":"1px solid #f1f5f9",background:bold?"#f8fafc":hi?"rgba(34,197,94,.04)":undefined}}>
@@ -660,21 +659,63 @@ export default function App(){
                 ))}
               </tbody>
             </table>
+            {/* KPI saving cards */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10,marginBottom:20}}>
+              {[
+                {label:"Annual tax saving",val:"$"+fmt(R.saving),hi:true},
+                {label:"Saving per "+cyc.singular,val:"$"+fmt((R.newP.tNet-R.noP.net)*(12/cyc.periods)),hi:true},
+                {label:"Net per "+cyc.singular+" (packaged)",val:"$"+fmt(R.newP.tNet*(12/cyc.periods)),hi:false},
+                {label:"Net per "+cyc.singular+" (no packaging)",val:"$"+fmt(R.noP.net*(12/cyc.periods)),hi:false},
+              ].map(({label,val,hi})=>(
+                <div key={label} style={{background:hi?"#f0fdf4":"#f8fafc",border:"1.5px solid "+(hi?gbor:"#e2e8f0"),borderRadius:10,padding:"10px 14px"}}>
+                  <div style={{fontSize:11,color:hi?green:"#64748b",marginBottom:3,fontWeight:500}}>{label}</div>
+                  <div style={{fontSize:18,fontWeight:700,color:hi?gdim:"#1e293b"}}>{val}</div>
+                </div>
+              ))}
+            </div>
             <div style={{color:green,fontWeight:600,fontSize:13,borderBottom:"2px solid "+green,paddingBottom:4,marginBottom:10}}>Salary Packaged Benefit Items</div>
-            <table style={{width:"100%",fontSize:12,marginBottom:20,borderCollapse:"collapse"}}>
-              <thead><tr style={{borderBottom:"1px solid #e2e8f0"}}>{["Item","Description","Type","Per "+cyc.singular].map((h,i)=><th key={h} style={{textAlign:i>2?"right":"left",padding:"4px",color:"#94a3b8",fontWeight:500}}>{h}</th>)}</tr></thead>
-              <tbody>
-                {R.LI.map((li,i)=><tr key={i} style={{borderBottom:"1px solid #f8fafc"}}><td style={{padding:"4px"}}>{li.bt.label}</td><td>{li.description||"-"}</td><td>Current</td><td style={{textAlign:"right"}}>{li.isFee?"$"+fmt(li.perCycleFeeIncGST):"$"+fmt(li.mon*(12/cyc.periods))}</td></tr>)}
-                <tr style={{borderTop:"1px solid #e2e8f0",fontWeight:600}}><td colSpan={3} style={{padding:"4px 0"}}>Total (excl. GST on fee)</td><td style={{textAlign:"right"}}>${fmt(R.aDed/cyc.periods)}</td></tr>
-              </tbody>
-            </table>
+            {R.LI.filter(li=>!li.isFee).map((li,i)=>(
+              <div key={i} style={{border:"1.5px solid #e2e8f0",borderRadius:10,overflow:"hidden",marginBottom:8}}>
+                <div style={{background:navy,padding:"8px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span style={{fontSize:12,fontWeight:600,color:"#fff"}}>{li.bt.label}</span>
+                  <span style={{fontSize:12,color:green,fontWeight:600}}>Current</span>
+                </div>
+                <div style={{background:"#fff",padding:"10px 14px"}}>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,fontSize:12}}>
+                    <div><div style={{color:"#94a3b8",marginBottom:2}}>Description</div><div style={{color:"#1e293b",fontWeight:500}}>{li.description||"-"}</div></div>
+                    <div><div style={{color:"#94a3b8",marginBottom:2}}>Per {cyc.singular}</div><div style={{color:"#1e293b",fontWeight:500}}>${fmt(li.mon*(12/cyc.periods))}</div></div>
+                    <div><div style={{color:"#94a3b8",marginBottom:2}}>Annual</div><div style={{color:"#1e293b",fontWeight:500}}>${fmt(li.ann)}</div></div>
+                    {(li.accountName||li.bsb||li.accountNumber)&&<>
+                      <div><div style={{color:"#94a3b8",marginBottom:2}}>Account name</div><div style={{color:"#1e293b"}}>{li.accountName||"-"}</div></div>
+                      <div><div style={{color:"#94a3b8",marginBottom:2}}>BSB</div><div style={{color:"#1e293b"}}>{li.bsb||"-"}</div></div>
+                      <div><div style={{color:"#94a3b8",marginBottom:2}}>Account number</div><div style={{color:"#1e293b"}}>{li.accountNumber||"-"}</div></div>
+                    </>}
+                  </div>
+                </div>
+              </div>
+            ))}
+            {/* Packaging fee box */}
+            {R.LI.find(l=>l.isFee)&&(()=>{const fi=R.LI.find(l=>l.isFee);return(
+              <div style={{border:"1.5px solid #e2e8f0",borderRadius:10,overflow:"hidden",marginBottom:8}}>
+                <div style={{background:navy,padding:"8px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span style={{fontSize:12,fontWeight:600,color:"#fff"}}>Packaging Administration Fee</span>
+                  <span style={{fontSize:12,color:"#94a3b8"}}>Annual fee incl. GST</span>
+                </div>
+                <div style={{background:"#fff",padding:"10px 14px"}}>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,fontSize:12}}>
+                    <div><div style={{color:"#94a3b8",marginBottom:2}}>Per {cyc.singular} (incl. GST)</div><div style={{color:"#1e293b",fontWeight:500}}>${fmt(fi.perCycleFeeIncGST)}</div></div>
+                    <div><div style={{color:"#94a3b8",marginBottom:2}}>Annual (incl. GST)</div><div style={{color:"#1e293b",fontWeight:500}}>${fmt(fi.annualFeeIncGST)}</div></div>
+                    <div><div style={{color:"#94a3b8",marginBottom:2}}>GST component</div><div style={{color:"#1e293b"}}>${fmt(fi.perCycleGST*(cyc.periods))}/yr</div></div>
+                  </div>
+                </div>
+              </div>
+            );})()}
             <div style={{color:green,fontWeight:600,fontSize:13,borderBottom:"2px solid "+green,paddingBottom:4,marginBottom:10}}>{cyc.label} Modelled Benefits</div>
             <table style={{width:"100%",fontSize:12,marginBottom:20,borderCollapse:"collapse"}}>
               <thead><tr style={{borderBottom:"1px solid #e2e8f0"}}><th style={{textAlign:"left",padding:"4px 0",color:"#94a3b8",fontWeight:500}}></th><th style={{textAlign:"right",color:"#94a3b8",fontWeight:500}}>No packaging</th><th style={{textAlign:"right",color:"#94a3b8",fontWeight:500}}>Proposed</th></tr></thead>
               <tbody>
                 {mkRows(R,cyc.periods,empType==="rebatable").map(([label,a,b,border,hi,bold],i)=>{
-                  const isRebRow=false;
-                  const isFeeRow=label==="Less packaging fee (pre-tax cost)";
+                  const isRebRow=false;                  const isFeeRow=label==="Less packaging fee (pre-tax cost)";
                   return(
                     <tr key={i} style={{borderTop:border?"1px solid #e2e8f0":undefined}}>
                       <td style={{padding:"3px 0",color:bold?"#1e293b":"#64748b",fontWeight:bold?600:400}}>{label}</td>
