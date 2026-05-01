@@ -380,18 +380,18 @@ export default function App(){
 
   const mkRows=(r,p,isReb)=>{
     const s=v=>v!=null&&v!==0?v*(12/p):null;
+    const feeLi=R.LI.find(l=>l.isFee);
     const rows=[
       ["Salary",s(r.noP.sal),s(r.newP.sal)],
       ["TEC",s(r.noP.sal),s(r.newP.sal)],
       ["Benefits pre-tax",null,s(r.newP.ben),false,true],
       ["GST paid by employer",null,s(r.newP.gst)],
     ];
-    if(isReb)rows.push(["Employee FBT contribution pre-tax",null,s(r.newP.xEmp),false,true]);
+    if(isReb)rows.push(["Employee FBT contribution (pre-tax)",null,s(r.newP.xEmp),false,true]);
     rows.push(["Taxable income",s(r.noP.sal),s(r.newP.tInc),true]);
     rows.push(["Income tax and Medicare",s(r.noP.tax),s(r.newP.tax)]);
     if(isReb){
       rows.push(["FBT payable gross",null,s(r.newP.xGross)]);
-      rows.push(["FBT rebate (47%)",null,r.newP.xReb>0?-s(r.newP.xReb):null]);
       rows.push(["Net FBT cost to employee",null,s(r.newP.xNet)]);
     } else {
       rows.push(["FBT payable",null,s(r.newP.xGross)]);
@@ -399,8 +399,7 @@ export default function App(){
     rows.push(["HELP debt",helpDebt?s(r.noP.hlp):null,helpDebt?s(r.newP.hlp):null]);
     rows.push(["Net income",s(r.noP.net),s(r.newP.net),true]);
     rows.push(["Add back benefits",null,s(r.newP.add),false,true]);
-    const feeLi=R.LI.find(l=>l.isFee);
-    if(feeLi)rows.push(["Less packaging fee (pre-tax cost)",null,-(feeLi.perCycleFeeExGST)]);
+    if(feeLi)rows.push(["Less packaging fee (pre-tax cost)",null,feeLi?-(feeLi.perCycleFeeExGST*(p/p)):null]);
     rows.push(["Total net income",s(r.noP.net),s(r.newP.tNet),true,false,true]);
     return rows;
   };
@@ -598,13 +597,17 @@ export default function App(){
                 </tr></thead>
                 <tbody>
                   {mkRows(R,p,isReb).map(([label,a,b,border,hi,bold],i)=>{
-                    const isRebRow=label==="FBT rebate (47%)";
+                    const isRebRow=false;
+                    const isFeeRow=label==="Less packaging fee (pre-tax cost)";
+                    const bVal=isFeeRow?b:b;
                     return(
                       <tr key={i} style={{borderTop:border?"2px solid #e2e8f0":"1px solid #f1f5f9",background:bold?"#f8fafc":hi?"rgba(34,197,94,.04)":undefined}}>
                         <td style={{padding:"8px 0",color:hi?"#475569":"#64748b",fontWeight:bold?600:400}}>{label}</td>
-                        <td style={{textAlign:"right",padding:"8px 8px",color:bold?"#1e293b":"#475569",fontWeight:bold?600:400}}>{a!=null&&Math.abs(a)>0?"$"+fmt(Math.abs(a)):"-"}</td>
-                        <td style={{textAlign:"right",padding:"8px 8px",background:"#f0fdf4",color:bold?gdim:isRebRow?gdim:hi?gdim:"#475569",fontWeight:bold||isRebRow||hi?700:400}}>
-                          {b!=null&&Math.abs(b)>0?(isRebRow?"($"+fmt(Math.abs(b))+")":"$"+fmt(Math.abs(b))):"-"}
+                        <td style={{textAlign:"right",padding:"8px 8px",color:bold?"#1e293b":"#475569",fontWeight:bold?600:400}}>
+                          {a!=null&&Math.abs(a)>0?"$"+fmt(Math.abs(a)):"-"}
+                        </td>
+                        <td style={{textAlign:"right",padding:"8px 8px",background:"#f0fdf4",color:bold?gdim:isRebRow?gdim:isFeeRow?"#dc2626":hi?gdim:"#475569",fontWeight:bold||isRebRow?700:400}}>
+                          {bVal!=null&&Math.abs(bVal)>0?(isRebRow||isFeeRow?"($"+fmt(Math.abs(bVal))+")" :"$"+fmt(Math.abs(bVal))):"-"}
                         </td>
                       </tr>
                     );
@@ -670,13 +673,16 @@ export default function App(){
               <thead><tr style={{borderBottom:"1px solid #e2e8f0"}}><th style={{textAlign:"left",padding:"4px 0",color:"#94a3b8",fontWeight:500}}></th><th style={{textAlign:"right",color:"#94a3b8",fontWeight:500}}>No packaging</th><th style={{textAlign:"right",color:"#94a3b8",fontWeight:500}}>Proposed</th></tr></thead>
               <tbody>
                 {mkRows(R,cyc.periods,empType==="rebatable").map(([label,a,b,border,hi,bold],i)=>{
-                  const isRebRow=label==="FBT rebate (47%)";
+                  const isRebRow=false;
+                  const isFeeRow=label==="Less packaging fee (pre-tax cost)";
                   return(
                     <tr key={i} style={{borderTop:border?"1px solid #e2e8f0":undefined}}>
                       <td style={{padding:"3px 0",color:bold?"#1e293b":"#64748b",fontWeight:bold?600:400}}>{label}</td>
-                      <td style={{textAlign:"right",color:bold?"#1e293b":"#475569",fontWeight:bold?600:400}}>{a!=null&&Math.abs(a)>0?"$"+fmt(Math.abs(a)):"-"}</td>
-                      <td style={{textAlign:"right",color:bold?gdim:isRebRow?gdim:"#475569",fontWeight:bold||isRebRow?700:400}}>
-                        {b!=null&&Math.abs(b)>0?(isRebRow?"($"+fmt(Math.abs(b))+")":"$"+fmt(Math.abs(b))):"-"}
+                      <td style={{textAlign:"right",color:bold?"#1e293b":"#475569",fontWeight:bold?600:400}}>
+                        {a!=null&&Math.abs(a)>0?"$"+fmt(Math.abs(a)):"-"}
+                      </td>
+                      <td style={{textAlign:"right",color:bold?gdim:isRebRow?gdim:isFeeRow?"#dc2626":"#475569",fontWeight:bold||isRebRow?700:400}}>
+                        {b!=null&&Math.abs(b)>0?(isRebRow||isFeeRow?"($"+fmt(Math.abs(b))+")":"$"+fmt(Math.abs(b))):"-"}
                       </td>
                     </tr>
                   );
