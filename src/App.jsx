@@ -340,7 +340,10 @@ export default function App(){
     const txN=cTax(gross)-cLITO(gross)+cMed(gross);
     const txP=cTax(tInc)-cLITO(tInc)+cMed(tInc);
     const hN=helpDebt?cHELP(gross):0,hP=helpDebt?cHELP(tInc):0;
-    const nN=(gross-txN-hN)/12,nP=(tInc-txP-hP)/12,tN=nP+tAdd;
+    const nN=(gross-txN-hN)/12,nP=(tInc-txP-hP)/12;
+    // tNet = net after tax + benefit addbacks - packaging fee (fee is a cost not a benefit)
+    const annFeeExGST=LI.find(l=>l.isFee)?LI.find(l=>l.isFee).ann:0;
+    const tN=nP+tAdd-(annFeeExGST/12);
     return{LI,aDed,aGST,saving:(tN-nN)*12,
       noP:{sal:gross/12,tax:txN/12,hlp:hN/12,net:nN},
       newP:{sal:gross/12,ben:aDed/12,gst:aGST/12,tInc:tInc/12,tax:txP/12,hlp:hP/12,xGross:tGross/12,xReb:tReb/12,xNet:tNet/12,xEmp:tEmp/12,net:nP,add:tAdd,tNet:tN}};
@@ -364,6 +367,7 @@ export default function App(){
     rows.push(["HELP debt",helpDebt?s(r.noP.hlp):null,helpDebt?s(r.newP.hlp):null]);
     rows.push(["Net income",s(r.noP.net),s(r.newP.net),true]);
     rows.push(["Add back benefits",null,s(r.newP.add),false,true]);
+    rows.push(["Less packaging fee (pre-tax cost)",null,s(-R.LI.find(l=>l.isFee)?.pre||0)]);
     rows.push(["Total net income",s(r.noP.net),s(r.newP.tNet),true,false,true]);
     return rows;
   };
