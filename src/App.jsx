@@ -1,35 +1,14 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 
-// FBT constants
-// Rebatable employers: gross FBT = benefit × GU2 × FRATE
-// Rebate = gross FBT × FREB (47%)
-// Net FBT cost to employee = gross FBT × (1 - FREB) = gross FBT × 0.53
-const FRATE=0.47, FREB=0.47, FNET=1-0.47, GU2=1.8868, XCAP=9010, CCAP=15900, MCAP=2650;
-const RCAP=Math.round(30000/GU2*100)/100; // ~$15,899 actual benefit value under $30k grossed-up cap
+const FRATE=0.47,FREB=0.47,GU1=2.0802,GU2=1.8868,XCAP=9010,CCAP=15900,MCAP=2650;
+const RCAP=Math.round(30000/GU2*100)/100;
 const navy="#0f1e2e",green="#22c55e",gdim="#16a34a",gbg="rgba(34,197,94,0.12)",gbor="rgba(34,197,94,0.4)";
 const INP={width:"100%",boxSizing:"border-box",background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 12px",fontSize:13,color:"#1e293b",outline:"none"};
 const LBL={fontSize:12,color:"#64748b",marginBottom:5,display:"block",fontWeight:500};
 const CARD={background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,padding:"1.5rem",marginBottom:"1rem"};
 
-const L1R={
-NSW:["Aberdeen","Balranald","Barham-Koondrook","Barraba","Batemans Bay","Batlow","Bega","Bermagui","Berridale","Berrigan","Bingara","Boggabri","Bombala","Boorowa","Bourke","Brewarrina","Broken Hill","Broulee","Brunswick Heads","Burrill Lake","Byron Bay","Canowindra","Cobar","Condobolin","Cooma","Coonabarabran","Coonamble","Cootamundra","Corowa-Wahgunyah","Cowra","Crescent Head","Crookwell","Culcairn","Dalmeny","Deniliquin","Denman","Dorrigo","Eden","Evans Head","Ewingsdale","Finley","Forbes","Gilgandra","Glen Innes","Gloucester","Grenfell","Griffith","Gulgong","Gundagai","Gunnedah","Harden","Hay","Hillston","Holbrook","Iluka","Inverell","Ivanhoe","Jerilderie","Jindabyne","Junee","Kandos","Kempsey","Kootingal","Kyogle","Lake Cargelligo","Leeton","Lennox Head","Lightning Ridge","Lithgow","Lord Howe Island","Macksville","Maclean","Malua Bay","Manildra","Manilla","Menindee","Merimbula","Milton","Moama-Echuca","Moree","Moruya","Mossy Point","Mudgee","Mullumbimby","Mulwala-Yarrawonga","Murrumburrah","Muswellbrook","Nambucca Heads","Narooma","Narrabri","Narrandera","Narromine","Nyngan","Oberon","Parkes","Peak Hill","Perisher Village","Portland","Quirindi","Satur","Scone","South West Rocks","South Golden Beach","Suffolk Park","Sussex Inlet","Tathra","Temora","Tenterfield","Thredbo Village","Tocumwal","Tumbarumba","Tumut","Tura Beach","Tuross Heads","Ulladulla","Walcha","Walgett","Wallerawang","Warialda","Warren","Wee Waa","Wellington","Werris Creek","West Wyalong","Wilcannia","Yamba","Yenda","Young"],
-QLD:["Airlie Beach","Allingham","Atherton","Ayr","Babinda","Barcaldine","Biloela","Blackall","Blackwater","Bowen","Bulwer","Cannonvale","Cardwell","Charleville","Charters Towers","Cherbourg","Childers","Chinchilla","Clermont","Cloncurry","Collinsville","Cooktown","Cooroy","Cowan Cowan","Craiglie","Crows Nest","Cunnamulla","Dalby","Dent Island","Dysart","Emerald","Emu Park","Fitzroy Island","Fraser Island","Gayndah","Glenden","Goondiwindi","Great Keppel Island","Green Island","Gympie","Gympie South","Hamilton Island","Home Hill","Hughenden","Ingham","Innisfail","Karumba","Kingaroy","Longreach","Mareeba","Middlemount","Miles","Millmerran","Mission Beach","Mitchell","Monto","Moranbah","Mossman","Mount Isa","Moura","Mundubbera","Murgon","Nanango","Normanton","Palm Island","Point Arkwright","Port Douglas","Proserpine","Roma","Smithfield Heights","St George","Stanthorpe","Thursday Island","Tieri","Tin Can Bay","Tully","Warwick","Weipa","Whitsunday Group of Islands","Winton","Wondai","Wongaling Beach","Woorabinda","Yandina","Yaroomba","Yarrabah","Yeppoon"],
-VIC:["Alexandra","Ararat","Avoca","Bairnsdale","Beaufort","Benalla","Bright","Camperdown","Casterton","Charlton","Cobden","Cobram","Cohuna","Colac","Coleraine","Corryong","Cowes","Dimboola","Donald","Echuca-Moama","Euroa","Foster","Hamilton","Heathcote","Heyfield","Heywood","Horsham","Inverloch","Kerang","Koondrook-Barham","Korumburra","Lakes Entrance","Leongatha","Lorne","Maffra","Mansfield","Maryborough","Mirboo North","Mortlake","Mount Beauty","Myrtleford","Nagambie","Nathalia","Newhaven","Nhill","Orbost","Ouyen","Paynesville","Portland","Robinvale","Rochester","Rutherglen","St Arnaud","Sale","Seymour","Stawell","Stratford","Swan Hill","Terang","Tongala","Wahgunyah-Corowa","Warracknabeal","Wonthaggi","Yarram","Yarrawonga-Mulwala"],
-TAS:["Beaconsfield","Beauty Point","Bridport","Bruny Island","Deloraine","Dodges Ferry","George Town","Queenstown","Rosebery","St Helens","Savage River","Scottsdale","Smithton","Tullah","Zeehan"],
-WA:["Augusta","Boddington","Boulder","Bridgetown","Broome","Busselton","Carnarvon","Collie","Coolgardie","Dampier","Denham","Denmark","Derby","Dirk Hartog Island","Dongara","Dunsborough","Esperance","Exmouth","Fitzroy Crossing","Halls Creek","Kalbarri","Kalgoorlie","Kambalda","Karratha","Katanning","Kellerberrin","Kojonup","Kununurra","Leinster","Leonora","Manjimup","Margaret River","Meekatharra","Merredin","Moora","Mount Barker","Narrogin","Newman","Norseman","Pannawonica","Paraburdoo","Port Denison","Port Hedland","Roebourne","Southern Cross","Tom Price","Wagin","Waroona","Wickham","Wyndham"],
-SA:["Ardrossan","Barmera","Berri","Bordertown","Burra","Ceduna","Clare","Coober Pedy","Jamestown","Kadina","Kangaroo Island","Keith","Kingscote","Kingston South East","Leigh Creek","Loxton","Maitland","Millicent","Moonta","Naracoorte","Penola","Peterborough","Port Lincoln","Quorn","Renmark","Roxby Downs","Streaky Bay","Tumby Bay","Waikerie","Wallaroo","Woomera"],
-NT:["Alice Springs","Alyangula","Bathurst Island","Bees Creek","Galiwinku","Gove","Humpty Doo","Jabiru","Katherine","Maningrida","Port Keats","Tennant Creek","Virginia","Yulara"],
-ACT:[]};
-
-const L2R={
-NSW:["Aberdeen","Albury-Wodonga","Armidale","Arrawarra","Ballina","Balranald","Bangalow","Barham-Koondrook","Barraba","Basin View","Batemans Bay","Bathurst","Batlow","Bega","Bellingen","Bermagui","Berridale","Berrigan","Blackheath","Blayney","Bingara","Boggabri","Bombala","Bonny Hill","Boorowa","Bourke","Bowral","Brewarrina","Broken Hill","Broulee","Bundanoon","Bungendore","Buronga","Burrill Lake","Byron Bay","Callala Bay","Camden Haven","Canowindra","Casino","Cobar","Coffs Harbour","Colo Vale","Coolamon","Condobolin","Cooma","Coonabarabran","Coonamble","Cootamundra","Coraki","Corowa-Wahgunyah","Cowra","Crescent Head","Crookwell","Culburra","Culcairn","Dalmeny","Dareton","Deniliquin","Denman","Dorrigo","Dubbo","Eden","Emerald Beach","Estella","Evans Head","Ewingsdale","Finley","Forbes","Forest Hill","Forster","Gilgandra","Glen Innes","Gloucester","Grafton","Greenwell Point","Grenfell","Griffith","Gulgong","Gundagai","Gunnedah","Guyra","Harden","Harrington","Hay","Hillston","Holbrook","Howlong","Huskisson","Iluka","Inverell","Ivanhoe","Jerilderie","Jindabyne","Junction Hill","Junee","Kandos","Katoomba","Kempsey","Kootingal","Korora Bay","Kyogle","Lake Cargelligo","Lake Cathie","Leeton","Lennox Head","Lightning Ridge","Lismore","Lithgow","Macksville","Maclean","Malua Bay","Manildra","Manilla","Menindee","Merimbula","Milton","Mittagong","Moama-Echuca","Molong","Moree","Moruya","Mossy Point","Mudgee","Mulwala-Yarrawonga","Murrumburrah","Muswellbrook","Nambucca Heads","Narooma","Narrabri","Narrandera","Narromine","Nyngan","Oberon","Old Bar","Orange","Orient Point","Parkes","Peak Hill","Perisher Village","Portland","Port Macquarie","Quirindi","Sanctuary Point","Sandy Beach","Satur","Sawtell","Scone","South-West Rocks","South Golden Beach","St George Basin","Suffolk Park","Sussex Inlet","Tamworth","Taree","Tathra","Temora","Tenterfield","Thredbo Village","Tocumwal","Tumbarumba","Tumut","Tuncurry","Tura Beach","Tuross Heads","Ulladulla","Uralla","Urunga","Wagga Wagga","Walcha","Walgett","Wallerawang","Warialda","Warren","Wauchope","Wee Waa","Wellington","Wentworth","Werris Creek","West Wyalong","Wilcannia","Windermere Park","Wingham","Wollongbar","Woolgoolga","Yamba","Yenda","Young"],
-QLD:["Airlie Beach","Alice River","Allingham","Atherton","Ayr","Babinda","Barcaldine","Bargara","Biloela","Blackall","Blackwater","Bli Bli","Bowen","Boyne Island","Bucasia","Buddina Beach","Bulwer","Bundaberg","Burnett Heads","Cairns","Calliope","Cannonvale","Caravonica","Cardwell","Charleville","Charters Towers","Cherbourg","Childers","Chinchilla","Clermont","Clifton Beach","Cloncurry","Collinsville","Cooktown","Coolum Beach","Cooroy","Cordelia Estate","Cowan Cowan","Craiglie","Crows Nest","Cunnamulla","Dalby","Deeragun","Dundowran","Dysart","Edmonton","Eimeo","Emerald","Emu Park","Fitzroy Island","Fraser Island","Gayndah","Gladstone","Glenden","Glenella","Goondiwindi","Gordonvale","Gracemere","Great Keppel Island","Green Island","Gympie","Gympie South","Hambledon","Hamilton Island","Hervey Bay","Highfields","Holloways Beach","Home Hill","Hughenden","Ingham","Innisfail","Karumba","Kawana Waters","Kingaroy","Kingsthorpe","Longreach","Mackay","Magnetic Island","Marcoola","Mareeba","Maryborough","Middlemount","Miles","Millmerran","Mission Beach","Mitchell","Monto","Mooloolaba","Moranbah","Mossman","Mount Isa","Mount Low","Mount Morgan","Moura","Mudjimba","Mundubbera","Murgon","Nambour","Nanango","Nelly Bay","Noosa","Normanton","Oakey","Palm Island","Peregian Beach","Pittsworth","Point Arkwright","Port Douglas","Proserpine","Rockhampton","Roma","Sandstone Point","Sarina","Smithfield Heights","Southend","St George","Stanthorpe","Tannum Sands","Tewantin","Thursday Island","Tieri","Tin Can Bay","Toowoomba","Townsville","Tully","Walkerston","Walloon","Warana Beach","Warwick","Weipa","White Rock","Winton","Wondai","Wongaling Beach","Woorabinda","Yandina","Yaroomba","Yarrabah","Yeppoon","Yorkeys Knob"],
-VIC:["Alexandra","Anglesea","Ararat","Avoca","Bairnsdale","Ballarat","Beaufort","Beechworth","Benalla","Bendigo","Bright","Buninyong","Camperdown","Casterton","Castlemaine","Charlton","Chiltern","Churchill","Cobden","Cobram","Cohuna","Colac","Coleraine","Corryong","Cowes","Creswick","Daylesford","Dimboola","Donald","Echuca-Moama","Euroa","Foster","Hamilton","Heathcote","Heyfield","Heywood","Horsham","Inverloch","Irymple","Kerang","Koondrook-Barham","Korumburra","Kyabram","Lakes Entrance","Leongatha","Lorne","Maffra","Maldon","Mansfield","Maryborough","Merbein","Mildura","Mirboo North","Moe","Mooroopna","Mortlake","Morwell","Mount Beauty","Mount Helen","Myrtleford","Nagambie","Nathalia","Newhaven","Nhill","Numurkah","Orbost","Ouyen","Paynesville","Portarlington","Port Fairy","Portland","Queenscliff","Red Cliffs","Robinvale","Rochester","Rosedale","Rutherglen","St Arnaud","St Leonards","Sale","Seymour","Shepparton","Stawell","Stratford","Strathfieldsaye","Swan Hill","Tatura","Terang","Tongala","Trafalgar","Traralgon","Wangaratta","Warracknabeal","Warragul","Warrnambool","Wahgunyah-Corowa","Winchelsea","Wodonga-Albury","Wonthaggi","Yallourn North","Yallourn","Yarram","Yarrawonga-Mulwala"],
-TAS:["ALL_REMOTE"],
-WA:["Albany","Augusta","Australind","Boddington","Boulder","Bridgetown","Broome","Bunbury","Busselton","Capel","Carnarvon","Collie","Coolgardie","Dampier","Denham","Denmark","Derby","Dongara","Donnybrook","Dunsborough","Eaton","Esperance","Exmouth","Fitzroy Crossing","Gelorup","Geraldton","Halls Creek","Harvey","Kalbarri","Kalgoorlie","Kambalda","Karratha","Katanning","Kellerberrin","Kojonup","Kununurra","Leinster","Leonora","Leschenault","Little Grove","Manjimup","Margaret River","Meekatharra","Merredin","Moora","Mount Barker","Narrogin","Newman","Norseman","Pannawonica","Paraburdoo","Port Denison","Port Headland","Roebourne","Southern Cross","Tom Price","Wagin","Waroona","Wickham","Wyndham"],
-SA:["Ardrossan","Barmera","Berri","Bordertown","Burra","Ceduna","Clare","Coober Pedy","Crystal Brook","Jamestown","Kadina","Kangaroo Island","Keith","Kingscote","Kingston South East","Leigh Creek","Loxton","Maitland","Millicent","Moonta","Mount Gambier","Naracoorte","Penola","Peterborough","Port Augusta","Port Elliot","Port Lincoln","Port Pirie","Quorn","Renmark","Roxby Downs","Streaky Bay","Tailem Bend","Tumby Bay","Waikerie","Wallaroo","Whyalla","Woomera"],
-NT:["ALL_REMOTE"],
-ACT:[]};
+const L1R={NSW:["Aberdeen","Balranald","Barham-Koondrook","Barraba","Batemans Bay","Batlow","Bega","Bermagui","Berridale","Berrigan","Bingara","Boggabri","Bombala","Boorowa","Bourke","Brewarrina","Broken Hill","Broulee","Brunswick Heads","Burrill Lake","Byron Bay","Canowindra","Cobar","Condobolin","Cooma","Coonabarabran","Coonamble","Cootamundra","Corowa-Wahgunyah","Cowra","Crescent Head","Crookwell","Culcairn","Dalmeny","Deniliquin","Denman","Dorrigo","Eden","Evans Head","Ewingsdale","Finley","Forbes","Gilgandra","Glen Innes","Gloucester","Grenfell","Griffith","Gulgong","Gundagai","Gunnedah","Harden","Hay","Hillston","Holbrook","Iluka","Inverell","Ivanhoe","Jerilderie","Jindabyne","Junee","Kandos","Kempsey","Kootingal","Kyogle","Lake Cargelligo","Leeton","Lennox Head","Lightning Ridge","Lithgow","Lord Howe Island","Macksville","Maclean","Malua Bay","Manildra","Manilla","Menindee","Merimbula","Milton","Moama-Echuca","Moree","Moruya","Mossy Point","Mudgee","Mullumbimby","Mulwala-Yarrawonga","Murrumburrah","Muswellbrook","Nambucca Heads","Narooma","Narrabri","Narrandera","Narromine","Nyngan","Oberon","Parkes","Peak Hill","Perisher Village","Portland","Quirindi","Satur","Scone","South West Rocks","South Golden Beach","Suffolk Park","Sussex Inlet","Tathra","Temora","Tenterfield","Thredbo Village","Tocumwal","Tumbarumba","Tumut","Tura Beach","Tuross Heads","Ulladulla","Walcha","Walgett","Wallerawang","Warialda","Warren","Wee Waa","Wellington","Werris Creek","West Wyalong","Wilcannia","Yamba","Yenda","Young"],QLD:["Airlie Beach","Allingham","Atherton","Ayr","Babinda","Barcaldine","Biloela","Blackall","Blackwater","Bowen","Bulwer","Cannonvale","Cardwell","Charleville","Charters Towers","Cherbourg","Childers","Chinchilla","Clermont","Cloncurry","Collinsville","Cooktown","Cooroy","Cowan Cowan","Craiglie","Crows Nest","Cunnamulla","Dalby","Dent Island","Dysart","Emerald","Emu Park","Fitzroy Island","Fraser Island","Gayndah","Glenden","Goondiwindi","Great Keppel Island","Green Island","Gympie","Gympie South","Hamilton Island","Home Hill","Hughenden","Ingham","Innisfail","Karumba","Kingaroy","Longreach","Mareeba","Middlemount","Miles","Millmerran","Mission Beach","Mitchell","Monto","Moranbah","Mossman","Mount Isa","Moura","Mundubbera","Murgon","Nanango","Normanton","Palm Island","Point Arkwright","Port Douglas","Proserpine","Roma","Smithfield Heights","St George","Stanthorpe","Thursday Island","Tieri","Tin Can Bay","Tully","Warwick","Weipa","Whitsunday Group of Islands","Winton","Wondai","Wongaling Beach","Woorabinda","Yandina","Yaroomba","Yarrabah","Yeppoon"],VIC:["Alexandra","Ararat","Avoca","Bairnsdale","Beaufort","Benalla","Bright","Camperdown","Casterton","Charlton","Cobden","Cobram","Cohuna","Colac","Coleraine","Corryong","Cowes","Dimboola","Donald","Echuca-Moama","Euroa","Foster","Hamilton","Heathcote","Heyfield","Heywood","Horsham","Inverloch","Kerang","Koondrook-Barham","Korumburra","Lakes Entrance","Leongatha","Lorne","Maffra","Mansfield","Maryborough","Mirboo North","Mortlake","Mount Beauty","Myrtleford","Nagambie","Nathalia","Newhaven","Nhill","Orbost","Ouyen","Paynesville","Portland","Robinvale","Rochester","Rutherglen","St Arnaud","Sale","Seymour","Stawell","Stratford","Swan Hill","Terang","Tongala","Wahgunyah-Corowa","Warracknabeal","Wonthaggi","Yarram","Yarrawonga-Mulwala"],TAS:["Beaconsfield","Beauty Point","Bridport","Bruny Island","Deloraine","Dodges Ferry","George Town","Queenstown","Rosebery","St Helens","Savage River","Scottsdale","Smithton","Tullah","Zeehan"],WA:["Augusta","Boddington","Boulder","Bridgetown","Broome","Busselton","Carnarvon","Collie","Coolgardie","Dampier","Denham","Denmark","Derby","Dirk Hartog Island","Dongara","Dunsborough","Esperance","Exmouth","Fitzroy Crossing","Halls Creek","Kalbarri","Kalgoorlie","Kambalda","Karratha","Katanning","Kellerberrin","Kojonup","Kununurra","Leinster","Leonora","Manjimup","Margaret River","Meekatharra","Merredin","Moora","Mount Barker","Narrogin","Newman","Norseman","Pannawonica","Paraburdoo","Port Denison","Port Hedland","Roebourne","Southern Cross","Tom Price","Wagin","Waroona","Wickham","Wyndham"],SA:["Ardrossan","Barmera","Berri","Bordertown","Burra","Ceduna","Clare","Coober Pedy","Jamestown","Kadina","Kangaroo Island","Keith","Kingscote","Kingston South East","Leigh Creek","Loxton","Maitland","Millicent","Moonta","Naracoorte","Penola","Peterborough","Port Lincoln","Quorn","Renmark","Roxby Downs","Streaky Bay","Tumby Bay","Waikerie","Wallaroo","Woomera"],NT:["Alice Springs","Alyangula","Bathurst Island","Bees Creek","Galiwinku","Gove","Humpty Doo","Jabiru","Katherine","Maningrida","Port Keats","Tennant Creek","Virginia","Yulara"],ACT:[]};
+const L2R={NSW:["Aberdeen","Albury-Wodonga","Armidale","Arrawarra","Ballina","Balranald","Bangalow","Barham-Koondrook","Barraba","Basin View","Batemans Bay","Bathurst","Batlow","Bega","Bellingen","Bermagui","Berridale","Berrigan","Blackheath","Blayney","Bingara","Boggabri","Bombala","Bonny Hill","Boorowa","Bourke","Bowral","Brewarrina","Broken Hill","Broulee","Bundanoon","Bungendore","Buronga","Burrill Lake","Byron Bay","Callala Bay","Camden Haven","Canowindra","Casino","Cobar","Coffs Harbour","Colo Vale","Coolamon","Condobolin","Cooma","Coonabarabran","Coonamble","Cootamundra","Coraki","Corowa-Wahgunyah","Cowra","Crescent Head","Crookwell","Culburra","Culcairn","Dalmeny","Dareton","Deniliquin","Denman","Dorrigo","Dubbo","Eden","Emerald Beach","Estella","Evans Head","Ewingsdale","Finley","Forbes","Forest Hill","Forster","Gilgandra","Glen Innes","Gloucester","Grafton","Greenwell Point","Grenfell","Griffith","Gulgong","Gundagai","Gunnedah","Guyra","Harden","Harrington","Hay","Hillston","Holbrook","Howlong","Huskisson","Iluka","Inverell","Ivanhoe","Jerilderie","Jindabyne","Junction Hill","Junee","Kandos","Katoomba","Kempsey","Kootingal","Korora Bay","Kyogle","Lake Cargelligo","Lake Cathie","Leeton","Lennox Head","Lightning Ridge","Lismore","Lithgow","Macksville","Maclean","Malua Bay","Manildra","Manilla","Menindee","Merimbula","Milton","Mittagong","Moama-Echuca","Molong","Moree","Moruya","Mossy Point","Mudgee","Mulwala-Yarrawonga","Murrumburrah","Muswellbrook","Nambucca Heads","Narooma","Narrabri","Narrandera","Narromine","Nyngan","Oberon","Old Bar","Orange","Orient Point","Parkes","Peak Hill","Perisher Village","Portland","Port Macquarie","Quirindi","Sanctuary Point","Sandy Beach","Satur","Sawtell","Scone","South-West Rocks","South Golden Beach","St George Basin","Suffolk Park","Sussex Inlet","Tamworth","Taree","Tathra","Temora","Tenterfield","Thredbo Village","Tocumwal","Tumbarumba","Tumut","Tuncurry","Tura Beach","Tuross Heads","Ulladulla","Uralla","Urunga","Wagga Wagga","Walcha","Walgett","Wallerawang","Warialda","Warren","Wauchope","Wee Waa","Wellington","Wentworth","Werris Creek","West Wyalong","Wilcannia","Windermere Park","Wingham","Wollongbar","Woolgoolga","Yamba","Yenda","Young"],QLD:["Airlie Beach","Alice River","Allingham","Atherton","Ayr","Babinda","Barcaldine","Bargara","Biloela","Blackall","Blackwater","Bli Bli","Bowen","Boyne Island","Bucasia","Buddina Beach","Bulwer","Bundaberg","Burnett Heads","Cairns","Calliope","Cannonvale","Caravonica","Cardwell","Charleville","Charters Towers","Cherbourg","Childers","Chinchilla","Clermont","Clifton Beach","Cloncurry","Collinsville","Cooktown","Coolum Beach","Cooroy","Cordelia Estate","Cowan Cowan","Craiglie","Crows Nest","Cunnamulla","Dalby","Deeragun","Dundowran","Dysart","Edmonton","Eimeo","Emerald","Emu Park","Fitzroy Island","Fraser Island","Gayndah","Gladstone","Glenden","Glenella","Goondiwindi","Gordonvale","Gracemere","Great Keppel Island","Green Island","Gympie","Gympie South","Hambledon","Hamilton Island","Hervey Bay","Highfields","Holloways Beach","Home Hill","Hughenden","Ingham","Innisfail","Karumba","Kawana Waters","Kingaroy","Kingsthorpe","Longreach","Mackay","Magnetic Island","Marcoola","Mareeba","Maryborough","Middlemount","Miles","Millmerran","Mission Beach","Mitchell","Monto","Mooloolaba","Moranbah","Mossman","Mount Isa","Mount Low","Mount Morgan","Moura","Mudjimba","Mundubbera","Murgon","Nambour","Nanango","Nelly Bay","Noosa","Normanton","Oakey","Palm Island","Peregian Beach","Pittsworth","Point Arkwright","Port Douglas","Proserpine","Rockhampton","Roma","Sandstone Point","Sarina","Smithfield Heights","Southend","St George","Stanthorpe","Tannum Sands","Tewantin","Thursday Island","Tieri","Tin Can Bay","Toowoomba","Townsville","Tully","Walkerston","Walloon","Warana Beach","Warwick","Weipa","White Rock","Winton","Wondai","Wongaling Beach","Woorabinda","Yandina","Yaroomba","Yarrabah","Yeppoon","Yorkeys Knob"],VIC:["Alexandra","Anglesea","Ararat","Avoca","Bairnsdale","Ballarat","Beaufort","Beechworth","Benalla","Bendigo","Bright","Buninyong","Camperdown","Casterton","Castlemaine","Charlton","Chiltern","Churchill","Cobden","Cobram","Cohuna","Colac","Coleraine","Corryong","Cowes","Creswick","Daylesford","Dimboola","Donald","Echuca-Moama","Euroa","Foster","Hamilton","Heathcote","Heyfield","Heywood","Horsham","Inverloch","Irymple","Kerang","Koondrook-Barham","Korumburra","Kyabram","Lakes Entrance","Leongatha","Lorne","Maffra","Maldon","Mansfield","Maryborough","Merbein","Mildura","Mirboo North","Moe","Mooroopna","Mortlake","Morwell","Mount Beauty","Mount Helen","Myrtleford","Nagambie","Nathalia","Newhaven","Nhill","Numurkah","Orbost","Ouyen","Paynesville","Portarlington","Port Fairy","Portland","Queenscliff","Red Cliffs","Robinvale","Rochester","Rosedale","Rutherglen","St Arnaud","St Leonards","Sale","Seymour","Shepparton","Stawell","Stratford","Strathfieldsaye","Swan Hill","Tatura","Terang","Tongala","Trafalgar","Traralgon","Wangaratta","Warracknabeal","Warragul","Warrnambool","Wahgunyah-Corowa","Winchelsea","Wodonga-Albury","Wonthaggi","Yallourn North","Yallourn","Yarram","Yarrawonga-Mulwala"],TAS:["ALL_REMOTE"],WA:["Albany","Augusta","Australind","Boddington","Boulder","Bridgetown","Broome","Bunbury","Busselton","Capel","Carnarvon","Collie","Coolgardie","Dampier","Denham","Denmark","Derby","Dongara","Donnybrook","Dunsborough","Eaton","Esperance","Exmouth","Fitzroy Crossing","Gelorup","Geraldton","Halls Creek","Harvey","Kalbarri","Kalgoorlie","Kambalda","Karratha","Katanning","Kellerberrin","Kojonup","Kununurra","Leinster","Leonora","Leschenault","Little Grove","Manjimup","Margaret River","Meekatharra","Merredin","Moora","Mount Barker","Narrogin","Newman","Norseman","Pannawonica","Paraburdoo","Port Denison","Port Headland","Roebourne","Southern Cross","Tom Price","Wagin","Waroona","Wickham","Wyndham"],SA:["Ardrossan","Barmera","Berri","Bordertown","Burra","Ceduna","Clare","Coober Pedy","Crystal Brook","Jamestown","Kadina","Kangaroo Island","Keith","Kingscote","Kingston South East","Leigh Creek","Loxton","Maitland","Millicent","Moonta","Mount Gambier","Naracoorte","Penola","Peterborough","Port Augusta","Port Elliot","Port Lincoln","Port Pirie","Quorn","Renmark","Roxby Downs","Streaky Bay","Tailem Bend","Tumby Bay","Waikerie","Wallaroo","Whyalla","Woomera"],NT:["ALL_REMOTE"],ACT:[]};
 
 const RIDS=["remote_housing","remote_rent","remote_util","remote_travel"];
 const SUBS=[];const _sv=new Set();
@@ -42,12 +21,7 @@ for(const st of["NSW","QLD","VIC","TAS","WA","SA","NT","ACT"]){
 }
 SUBS.sort((a,b)=>a.town.localeCompare(b.town));
 function nm(s){return s.toLowerCase().replace(/[^a-z0-9 ]/g,"").trim();}
-function chkR(town,state,list){
-  if(!town||!state)return null;
-  const d=list[state]||[];
-  if(d[0]==="ALL_REMOTE")return{remote:true,note:"All towns here are remote."};
-  return d.find(x=>nm(x)===nm(town))?{remote:true}:{remote:false};
-}
+function chkR(town,state,list){if(!town||!state)return null;const d=list[state]||[];if(d[0]==="ALL_REMOTE")return{remote:true,note:"All towns here are remote."};return d.find(x=>nm(x)===nm(town))?{remote:true}:{remote:false};}
 
 const LFOOD={single:{1:289,2:412,3:482},couple:{1:434,2:619,3:723},family1:{1:530,2:756,3:883},family2:{1:626,2:892,3:1043},family3:{1:722,2:1029,3:1204}};
 const STIERS=[{id:1,label:"Tier 1 up to $124,180"},{id:2,label:"Tier 2 $124,181 to $186,267"},{id:3,label:"Tier 3 over $186,267"}];
@@ -57,8 +31,7 @@ function calcLafha(l){
   const wks=parseFloat(l.weeksAway)||0;
   const accom=(parseFloat(l.actualAccomWeekly)||0)*wks;
   const rf=(LFOOD[l.familyType]||{})[l.salaryTier]||0;
-  let fw=rf;
-  if(l.useActualFood){const af=parseFloat(l.actualFoodWeekly)||0;fw=Math.min(af,rf);}
+  let fw=rf;if(l.useActualFood){const af=parseFloat(l.actualFoodWeekly)||0;fw=Math.min(af,rf);}
   return{accom,food:Math.max(0,fw-42)*wks,total:accom+Math.max(0,fw-42)*wks,weeks:wks,reasonableFood:rf};
 }
 
@@ -70,7 +43,7 @@ const BTS=[
   {id:"rates",       label:"Council Rates and Body Corporate",             gst:false,cap:"general",cat:"living",     ref:"s.20 FBTAA",                  af:["exempt","charity","rebatable"]},
   {id:"school",      label:"School or Childcare Fees",                     gst:false,cap:"general",cat:"living",     ref:"s.20 FBTAA",                  af:["exempt","charity","rebatable"]},
   {id:"remote_housing",label:"Remote Area Housing (s.58ZC)",               gst:false,cap:"none",   cat:"remote",     ref:"s.58ZC fully pre-tax",        af:["exempt","charity","rebatable","full"],rt:"full"},
-  {id:"remote_rent", label:"Remote Area Rent Subsidy (s.60)",              gst:false,cap:"none",   cat:"remote",     ref:"s.60 50pct pre-tax 50pct post-tax", af:["exempt","charity","rebatable","full"],rt:"half"},
+  {id:"remote_rent", label:"Remote Area Rent Subsidy (s.60)",              gst:false,cap:"none",   cat:"remote",     ref:"s.60 50pct pre-tax 50pct post-tax",af:["exempt","charity","rebatable","full"],rt:"half"},
   {id:"remote_util", label:"Remote Area Utilities (s.58ZD)",               gst:false,cap:"none",   cat:"remote",     ref:"s.58ZD fully pre-tax",        af:["exempt","charity","rebatable","full"],rt:"full"},
   {id:"remote_travel",label:"Remote Area Holiday Travel (s.60AA)",         gst:false,cap:"none",   cat:"remote",     ref:"s.60AA fully pre-tax",        af:["exempt","charity","rebatable","full"],rt:"full"},
   {id:"lafha",       label:"LAFHA Living Away From Home Allowance",        gst:false,cap:"none",   cat:"relocation", ref:"s.30 FBTAA",                  af:["exempt","charity","rebatable","full"],isLafha:true},
@@ -79,7 +52,7 @@ const BTS=[
   {id:"meal",        label:"Meal Entertainment (s.37AD)",                  gst:true, cap:"meal",   cat:"entertainment",ref:"s.37AD FBTAA",              af:["exempt","charity","rebatable"]},
   {id:"venue",       label:"Venue Hire or Holiday Accommodation (s.65J)",  gst:true, cap:"meal",   cat:"entertainment",ref:"s.65J FBTAA",               af:["exempt","charity","rebatable"]},
   {id:"ped",         label:"Portable Electronic Device (s.58X)",           gst:true, cap:"general",cat:"work",       ref:"s.58X FBTAA",                 af:["exempt","charity","rebatable","full"]},
-  {id:"mobile",      label:"Mobile Phone (s.58X)",                         gst:true, cap:"general",cat:"work",       ref:"s.58X FBTAA 1 device per FBT year", af:["exempt","charity","rebatable","full"]},
+  {id:"mobile",      label:"Mobile Phone (s.58X)",                         gst:true, cap:"general",cat:"work",       ref:"s.58X FBTAA 1 device per FBT year",af:["exempt","charity","rebatable","full"]},
   {id:"tools",       label:"Tools of Trade (s.58X)",                       gst:true, cap:"general",cat:"work",       ref:"s.58X FBTAA",                 af:["exempt","charity","rebatable","full"]},
   {id:"briefcase",   label:"Briefcase or Bag (s.58X)",                     gst:true, cap:"general",cat:"work",       ref:"s.58X FBTAA",                 af:["exempt","charity","rebatable","full"]},
   {id:"protective",  label:"Protective Clothing (s.58X)",                  gst:true, cap:"general",cat:"work",       ref:"s.58X FBTAA",                 af:["exempt","charity","rebatable","full"]},
@@ -100,13 +73,15 @@ function cHELP(i){if(i<=67000)return 0;if(i<=125000)return(i-67000)*.15;if(i<=17
 function fmt(n){return(n||0).toLocaleString("en-AU",{minimumFractionDigits:2,maximumFractionDigits:2});}
 function getCapLim(bt,et){if(!bt||bt.cap==="none")return null;if(bt.cap==="meal")return MCAP;if(et==="exempt")return XCAP;if(et==="charity")return CCAP;if(et==="rebatable")return RCAP;return null;}
 
-function fbtBlock(capped,btRt,empType,isNoCap){
+function fbtBlock(capped,btRt,btGst,empType,isNoCap){
   const isReb=empType==="rebatable",isFull=empType==="full";
-  const pct=btRt==="half"?0.5:1;
+  const pct=(btRt==="half")?0.5:1;
   const pre=capped*pct,post=capped*(1-pct);
-  const gross=(isFull||isReb)&&!isNoCap?pre*FRATE*GU2:0;
+  const gu=btGst?GU1:GU2;
+  const gross=(isFull||isReb)&&!isNoCap?pre*gu*FRATE:0;
   const rebAmt=isReb&&!isNoCap?gross*FREB:0;
-  const net=gross-rebAmt,emp=isReb?net:0;
+  const net=gross-rebAmt;
+  const emp=isReb&&!isNoCap?net:0;
   return{pre,post,gross,rebAmt,net,emp};
 }
 
@@ -136,7 +111,6 @@ const SUBST={
   income_prot:{label:"Income Protection Insurance",docs:["Insurance policy document showing premium, policy holder and insurer details","Evidence that the policy is held in the employee name","Insurer bank account or payment reference details"]},
   selfed:{label:"Self-Education Expenses",docs:["Invoice or receipt from the educational institution","Evidence that the course is directly related to the employee current employment","Enrolment confirmation letter from the institution"]},
 };
-
 const UDOCS=[
   {label:"Identity and Employment",items:["Two most recent payslips OR a copy of the current signed employment contract"]},
   {label:"Banking Details",items:["Bank statement or bank letter showing account name, BSB and account number for the salary packaging disbursement account","For joint accounts confirmation that the employee is a named account holder"]},
@@ -165,20 +139,15 @@ function SubAC({label,value,onChange,placeholder}){
           <span style={{fontWeight:500}}>{s.town}</span><span style={{color:"#94a3b8",marginLeft:8,fontSize:11}}>{s.state}</span>
         </div>))}
       </div>)}
-      {open&&q.length>=2&&!suggs.length&&<div style={{position:"absolute",top:"100%",left:0,right:0,background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:8,zIndex:200,padding:"10px 14px",fontSize:12,color:"#94a3b8"}}>No matches found. Area may still qualify under ATO distance rules.</div>}
+      {open&&q.length>=2&&!suggs.length&&<div style={{position:"absolute",top:"100%",left:0,right:0,background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:8,zIndex:200,padding:"10px 14px",fontSize:12,color:"#94a3b8"}}>No matches. Area may still qualify under ATO distance rules.</div>}
     </div>
   );
 }
 
-function Bdg({ok,label}){
-  return <span style={{display:"inline-flex",alignItems:"center",gap:5,background:ok?gbg:"rgba(239,68,68,.08)",color:ok?gdim:"#dc2626",border:"1px solid "+(ok?gbor:"rgba(239,68,68,.3)"),borderRadius:20,padding:"2px 10px",fontSize:11,fontWeight:600}}>
-    <span style={{width:6,height:6,borderRadius:"50%",background:ok?green:"#ef4444",display:"inline-block"}}></span>{label}
-  </span>;
-}
+function Bdg({ok,label}){return <span style={{display:"inline-flex",alignItems:"center",gap:5,background:ok?gbg:"rgba(239,68,68,.08)",color:ok?gdim:"#dc2626",border:"1px solid "+(ok?gbor:"rgba(239,68,68,.3)"),borderRadius:20,padding:"2px 10px",fontSize:11,fontWeight:600}}><span style={{width:6,height:6,borderRadius:"50%",background:ok?green:"#ef4444",display:"inline-block"}}></span>{label}</span>;}
 
 function RemotePanel({item,updR}){
-  const r=item.remote;
-  const isReg=r.employerType==="regional";
+  const r=item.remote;const isReg=r.employerType==="regional";
   const rL=r.residence?chkR(r.residence.town,r.residence.state,isReg?L2R:L1R):null;
   const eL=r.employment?chkR(r.employment.town,r.employment.state,isReg?L2R:L1R):null;
   const both=rL&&rL.remote&&eL&&eL.remote;
@@ -197,20 +166,17 @@ function RemotePanel({item,updR}){
         ))}
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
-        <div>
-          <SubAC label="Employee residence" value={r.residence} onChange={v=>updR("residence",v)} placeholder="e.g. Broken Hill"/>
+        <div><SubAC label="Employee residence" value={r.residence} onChange={v=>updR("residence",v)} placeholder="e.g. Broken Hill"/>
           {r.residence&&<div style={{marginTop:5}}><Bdg ok={rL&&rL.remote} label={rL&&rL.remote?"Remote":"Not remote"}/>{rL&&rL.note&&<span style={{fontSize:11,color:gdim,marginLeft:6}}>{rL.note}</span>}</div>}
         </div>
-        <div>
-          <SubAC label="Place of employment" value={r.employment} onChange={v=>updR("employment",v)} placeholder="e.g. Karratha"/>
+        <div><SubAC label="Place of employment" value={r.employment} onChange={v=>updR("employment",v)} placeholder="e.g. Karratha"/>
           {r.employment&&<div style={{marginTop:5}}><Bdg ok={eL&&eL.remote} label={eL&&eL.remote?"Remote":"Not remote"}/>{eL&&eL.note&&<span style={{fontSize:11,color:gdim,marginLeft:6}}>{eL.note}</span>}</div>}
         </div>
       </div>
       {r.residence&&r.employment&&(
         <div style={{background:both?gbg:"rgba(239,68,68,.06)",border:"1.5px solid "+(both?gbor:"rgba(239,68,68,.25)"),borderRadius:8,padding:"10px 14px",fontSize:12}}>
-          {both
-            ?<><span style={{color:gdim,fontWeight:600}}>Both locations confirmed remote</span><span style={{color:"#64748b",marginLeft:8}}>FBT concessions apply under ss.58ZC, 59, 60, 60AA FBTAA 1986</span></>
-            :<><span style={{color:"#dc2626",fontWeight:600}}>Not confirmed</span><span style={{color:"#64748b",marginLeft:8}}>Both residence and employment must be in a remote area.</span></>}
+          {both?<><span style={{color:gdim,fontWeight:600}}>Both locations confirmed remote</span><span style={{color:"#64748b",marginLeft:8}}>FBT concessions apply under ss.58ZC, 59, 60, 60AA FBTAA 1986</span></>
+               :<><span style={{color:"#dc2626",fontWeight:600}}>Not confirmed</span><span style={{color:"#64748b",marginLeft:8}}>Both residence and employment must be in a remote area.</span></>}
         </div>
       )}
       <div style={{marginTop:8,fontSize:11,color:"#94a3b8"}}>ATO List 1 and 2 updated 25 Sep 2018. Unlisted areas may qualify under ATO distance rules.</div>
@@ -291,85 +257,59 @@ export default function App(){
 
   const R=useCallback(()=>{
     const cap=empType==="exempt"?XCAP:empType==="charity"?CCAP:empType==="rebatable"?RCAP:0;
-    // For rebatable: RCAP = ~$15,899/yr actual benefit value (grossed-up $30,000 cap)
-    // gU tracks annual benefit used against cap
     const remH=items.some(i=>i.typeId==="remote_housing"||i.typeId==="remote_rent");
     const monthlyFee=parseFloat(pkgFee)||0;
     let gU=0,mU=0,tMon=0,tGST=0,tAdd=0,tGross=0,tReb=0,tNet=0,tEmp=0;
     const LI=[];
     for(const item of items){
-      const bt=BTS.find(b=>b.id===item.typeId);if(!bt)continue;
+      const bt=BTS.find(b=>b.id===item.typeId);
+      if(!bt)continue;
       if((item.typeId==="remote_util"||item.typeId==="remote_travel")&&!remH)continue;
       let mon=0,ld=null;
       if(bt.isLafha){const x=calcLafha(item.lafha);ld=x;mon=x.total/12;}
       else{mon=parseFloat(item.monthlyAmount)||0;}
       if(mon<=0)continue;
-      const ann=mon*12,isMeal=bt.cap==="meal",isNone=bt.cap==="none";
+      const iAnn=mon*12;
+      const isMeal=bt.cap==="meal";
+      const isNone=bt.cap==="none";
+      const isNoCap=isNone;
       let cAnn;
-      if(isNone){
-        cAnn=ann;
-      } else if(isMeal){
-        cAnn=Math.min(ann,Math.max(0,MCAP-mU));
-      } else {
-        // cap is annual — genUsed tracks annual amounts
-        const genRem=Math.max(0,cap-gU);
-        cAnn=empType==="full"?ann:Math.min(ann,genRem);
-      }
+      if(isNone){cAnn=iAnn;}
+      else if(isMeal){cAnn=Math.min(iAnn,Math.max(0,MCAP-mU));}
+      else{const gr=Math.max(0,cap-gU);cAnn=empType==="full"?iAnn:Math.min(iAnn,gr);}
       const c=cAnn/12;
       if(isMeal)mU+=cAnn;else if(!isNone)gU+=cAnn;
       const gst=bt.gst?(c/11):0;
-      const fb=fbtBlock(c,bt.rt||"full",empType,isNone);
-      tMon+=fb.pre+fb.emp;
+      const fb=fbtBlock(c,bt.rt||"full",bt.gst,empType,isNoCap);
+      tMon+=c+fb.emp;
       tGST+=gst;
       tGross+=fb.gross;
       tReb+=fb.rebAmt;
       tNet+=fb.net;
       tEmp+=fb.emp;
-      if(!bt.isLafha)tAdd+=fb.pre;
-      LI.push({...item,bt,mon:c,pre:fb.pre,post:fb.post,rt:bt.rt||null,ann:cAnn,gst,xGross:fb.gross,xReb:fb.rebAmt,xNet:fb.net,xEmp:fb.emp,ld,reqMon:mon,atCap:!isNone&&cAnn<ann});
+      if(!bt.isLafha)tAdd+=c;
+      LI.push({...item,bt,mon:c,pre:fb.pre,post:fb.post,rt:bt.rt||null,ann:cAnn,gst,xGross:fb.gross,xReb:fb.rebAmt,xNet:fb.net,xEmp:fb.emp,ld,reqMon:mon,atCap:!isNone&&cAnn<iAnn});
     }
-    // Auto-add packaging fee if any benefits are present
-    // Fee is annual incl. GST - split evenly across pay cycles regardless of acceleration
     if(LI.length>0&&monthlyFee>0){
-      const annualFeeIncGST=monthlyFee; // monthlyFee here holds the annual fee
-      const annualFeeExGST=annualFeeIncGST/1.1;
-      const annualGSTOnFee=annualFeeIncGST-annualFeeExGST;
-      const perCycleFeeExGST=annualFeeExGST/cyc.periods;
-      const perCycleGST=annualGSTOnFee/cyc.periods;
-      const perCycleFeeIncGST=annualFeeIncGST/cyc.periods;
-      const monthlyFeeExGST=annualFeeExGST/12;
-      const monthlyGST=annualGSTOnFee/12;
+      const aFeeInc=monthlyFee;
+      const aFeeEx=aFeeInc/1.1;
+      const aGSTFee=aFeeInc-aFeeEx;
       const feeBt=BTS.find(b=>b.id==="mgmt")||{label:"Packaging Fee",ref:"Admin fee incl. GST",gst:true,cap:"general",af:[]};
-      const feeFb=fbtBlock(monthlyFeeExGST,"full",empType,false);
-      tMon+=feeFb.pre+feeFb.emp;
-      tGST+=monthlyGST;
-      tGross+=feeFb.gross;tReb+=feeFb.rebAmt;tNet+=feeFb.net;tEmp+=feeFb.emp;
-      tAdd+=feeFb.pre;
-      LI.push({
-        id:"__fee__",bt:feeBt,description:"Annual packaging fee (incl. GST)",
-        mon:monthlyFeeExGST,pre:feeFb.pre,post:feeFb.post,rt:null,
-        ann:annualFeeExGST,gst:monthlyGST,
-        annualFeeIncGST,perCycleFeeIncGST,perCycleFeeExGST,perCycleGST,
-        xGross:feeFb.gross,xReb:feeFb.rebAmt,xNet:feeFb.net,xEmp:feeFb.emp,
-        ld:null,isFee:true
-      });
+      tMon+=aFeeEx/12;
+      LI.push({id:"__fee__",bt:feeBt,description:"Annual packaging fee (incl. GST)",mon:aFeeEx/12,pre:aFeeEx/12,post:0,rt:null,ann:aFeeEx,gst:0,annualFeeIncGST:aFeeInc,perCycleFeeIncGST:aFeeInc/cyc.periods,perCycleFeeExGST:aFeeEx/cyc.periods,perCycleGST:aGSTFee/cyc.periods,xGross:0,xReb:0,xNet:0,xEmp:0,ld:null,isFee:true});
     }
-    const aDed=tMon*12,aGST=tGST*12,tInc=Math.max(0,gross-aDed);
-    // Verify: tGross/tReb/tNet are monthly totals stored in newP as /12 of annual
-    // mkRows scales by 12/p so weekly = monthly × 12/52
+    const aDed=tMon*12,aGST=tGST*12,aBen=tAdd*12;
+    const tInc=Math.max(0,gross-aDed);
     const txN=cTax(gross)-cLITO(gross)+cMed(gross);
     const txP=cTax(tInc)-cLITO(tInc)+cMed(tInc);
     const hN=helpDebt?cHELP(gross):0,hP=helpDebt?cHELP(tInc):0;
     const nN=(gross-txN-hN)/12,nP=(tInc-txP-hP)/12;
-    // tNet = net after tax + benefit addbacks - packaging fee (fee is a cost not a benefit)
-    const annFeeExGST=LI.find(l=>l.isFee)?LI.find(l=>l.isFee).ann:0;
-    const tN=nP+tAdd-(annFeeExGST/12);
+    const feeLI=LI.find(l=>l.isFee);
+    const tN=nP+tAdd-(feeLI?feeLI.ann/12:0);
     return{LI,aDed,aGST,saving:(tN-nN)*12,
       noP:{sal:gross/12,tax:txN/12,hlp:hN/12,net:nN},
-      newP:{sal:gross/12,ben:aDed/12,gst:aGST/12,tInc:tInc/12,tax:txP/12,hlp:hP/12,
-        xGross:tGross,xReb:tReb,xNet:tNet,xEmp:tEmp,
-        net:nP,add:tAdd,tNet:tN}};
-  },[gross,empType,helpDebt,items,pkgFee])();
+      newP:{sal:gross/12,ben:aBen/12,gst:aGST/12,tInc:tInc/12,tax:txP/12,hlp:hP/12,xGross:tGross,xReb:tReb,xNet:tNet,xEmp:tEmp,net:nP,add:tAdd,tNet:tN}};
+  },[gross,empType,helpDebt,items,pkgFee,cyc])();
 
   const SH=({icon,title,step})=>(
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"1.25rem"}}>
@@ -399,7 +339,7 @@ export default function App(){
     rows.push(["HELP debt",helpDebt?s(r.noP.hlp):null,helpDebt?s(r.newP.hlp):null]);
     rows.push(["Net income",s(r.noP.net),s(r.newP.net),true]);
     rows.push(["Add back benefits",null,s(r.newP.add),false,true]);
-    if(feeLi)rows.push(["Less packaging fee (pre-tax cost)",null,feeLi?-(feeLi.perCycleFeeExGST*(p/p)):null]);
+    if(feeLi)rows.push(["Less packaging fee (pre-tax cost)",null,-(feeLi.perCycleFeeExGST)]);
     rows.push(["Total net income",s(r.noP.net),s(r.newP.tNet),true,false,true]);
     return rows;
   };
@@ -454,7 +394,7 @@ export default function App(){
               </div>
               <div><label style={LBL}>Pay cycle</label><select style={INP} value={payCyc} onChange={e=>setPayCyc(e.target.value)}>{PCYC.map(c=><option key={c.id} value={c.id}>{c.label}</option>)}</select></div>
               <div><label style={LBL}>Gross annual salary ($)</label><input style={INP} type="number" value={salary} onChange={e=>setSalary(e.target.value)}/></div>
-              <div><label style={LBL}>Annual packaging fee incl. GST ($)</label><input style={INP} type="number" value={pkgFee} onChange={e=>setPkgFee(e.target.value)} placeholder="e.g. 198.00"/></div>
+              <div><label style={LBL}>Annual packaging fee incl. GST ($)</label><input style={INP} type="number" value={pkgFee} onChange={e=>setPkgFee(e.target.value)}/></div>
               <div style={{display:"flex",alignItems:"center",gap:8,paddingTop:22}}>
                 <input type="checkbox" checked={helpDebt} onChange={e=>setHelpDebt(e.target.checked)} style={{width:15,height:15,accentColor:green}}/>
                 <label style={{fontSize:13,color:"#475569",cursor:"pointer"}}>Employee has HELP or HECS debt</label>
@@ -473,7 +413,7 @@ export default function App(){
             <div style={{marginTop:12,background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,padding:"9px 14px",fontSize:12,color:"#64748b"}}>
               {empType==="exempt"&&<span>FBT exempt s.57A - general cap <b style={{color:"#1e293b"}}>$9,010</b> - meal cap <b style={{color:"#1e293b"}}>$2,650</b></span>}
               {empType==="charity"&&<span>FBT exempt charitable institution - general cap <b style={{color:"#1e293b"}}>$15,900</b> - meal cap <b style={{color:"#1e293b"}}>$2,650</b></span>}
-              {empType==="rebatable"&&<span>FBT rebatable — grossed-up cap <b style={{color:"#1e293b"}}>$30,000</b> (actual benefit value <b style={{color:"#1e293b"}}>${Math.round(RCAP).toLocaleString()}</b>) - net FBT passed to employee pre-tax</span>}
+              {empType==="rebatable"&&<span>FBT rebatable - grossed-up cap <b style={{color:"#1e293b"}}>$30,000</b> (actual benefit value <b style={{color:"#1e293b"}}>${Math.round(RCAP).toLocaleString()}</b>) - net FBT passed to employee pre-tax</span>}
               {empType==="full"&&<span>Full FBT payable at <b style={{color:"#1e293b"}}>47%</b> - no concessional cap</span>}
             </div>
           </div>
@@ -484,10 +424,10 @@ export default function App(){
               const bt=BTS.find(b=>b.id===item.typeId);
               const isRem=RIDS.includes(item.typeId);
               const capLim=getCapLim(bt,empType);
-              const mon=parseFloat(item.monthlyAmount)||0;
-              const ann=mon*12;
+              const iMon=parseFloat(item.monthlyAmount)||0;
+              const iAnn=iMon*12;
               const accelN=item.accelerate&&parseInt(item.accelerateCycles)>0?Math.min(parseInt(item.accelerateCycles),cyc.periods):null;
-              const effCap=capLim?Math.min(ann,capLim):ann;
+              const effCap=capLim?Math.min(iAnn,capLim):iAnn;
               const perCyc=accelN?effCap/accelN:effCap/cyc.periods;
               return(
                 <div key={item.id} style={{border:"1.5px solid #e2e8f0",borderRadius:10,padding:"1rem",marginBottom:10,background:"#fafafa"}}>
@@ -519,7 +459,7 @@ export default function App(){
                   </div>
                   <div style={{marginTop:8,fontSize:11,color:"#64748b",background:"#f8fafc",borderRadius:6,padding:"6px 10px",display:"flex",gap:12,flexWrap:"wrap"}}>
                     <span>{bt.gst?"GST applies":"No GST"}</span>
-                    <span>{"Cap: "+(bt.cap==="meal"?"Meal ent $"+MCAP.toLocaleString():bt.cap==="none"?"No cap exempt":empType==="exempt"?"General $"+XCAP.toLocaleString():empType==="charity"?"Charitable $"+CCAP.toLocaleString():empType==="rebatable"?"Rebatable $"+Math.round(RCAP).toLocaleString()+" (grossed-up $30,000)":"-")}</span>
+                    <span>{"Cap: "+(bt.cap==="meal"?"Meal ent $"+MCAP.toLocaleString():bt.cap==="none"?"No cap exempt":empType==="exempt"?"General $"+XCAP.toLocaleString():empType==="charity"?"Charitable $"+CCAP.toLocaleString():empType==="rebatable"?"Rebatable $"+Math.round(RCAP).toLocaleString():"-")}</span>
                     <span style={{color:green,fontWeight:500}}>{bt.ref}</span>
                   </div>
                   {(item.typeId==="remote_util"||item.typeId==="remote_travel")&&!hasRemHousing&&(
@@ -527,9 +467,9 @@ export default function App(){
                       This benefit requires a remote area housing (s.58ZC) or rent (s.60) benefit to also be packaged.
                     </div>
                   )}
-                  {capLim&&ann>capLim&&(
+                  {capLim&&iAnn>capLim&&(
                     <div style={{marginTop:6,background:"rgba(234,179,8,.1)",border:"1px solid rgba(234,179,8,.4)",borderRadius:6,padding:"7px 10px",fontSize:11,color:"#92400e"}}>
-                      Annual amount ${ann.toLocaleString()} exceeds cap of ${capLim.toLocaleString()} - only ${capLim.toLocaleString()}/yr will be packaged.
+                      Annual amount ${iAnn.toLocaleString()} exceeds cap of ${capLim.toLocaleString()} - only ${capLim.toLocaleString()}/yr will be packaged.
                     </div>
                   )}
                   {capLim&&!bt.isLafha&&(
@@ -571,16 +511,11 @@ export default function App(){
 
         {tab==="results"&&(()=>{
           const p=cyc.periods,sg=cyc.singular;
-          // R.newP.tNet and R.noP.net are already per-month figures
-          // scale to the selected pay cycle
-          const nP=R.newP.tNet*(12/p);
-          const nU=R.noP.net*(12/p);
-          const diff=nP-nU;
-          const annSaving=R.saving;
+          const nP=R.newP.tNet*(12/p),nU=R.noP.net*(12/p),diff=nP-nU;
           const isReb=empType==="rebatable";
           return(<>
             <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16}}>
-              {[{label:"Annual tax saving",val:"$"+fmt(annSaving),hi:annSaving>0},{label:"Saving per "+sg,val:"$"+fmt(diff),hi:diff>0},{label:"Net per "+sg+" (packaged)",val:"$"+fmt(nP)},{label:"Net per "+sg+" (no packaging)",val:"$"+fmt(nU)}].map(({label,val,hi})=>(
+              {[{label:"Annual tax saving",val:"$"+fmt(R.saving),hi:R.saving>0},{label:"Saving per "+sg,val:"$"+fmt(diff),hi:diff>0},{label:"Net per "+sg+" (packaged)",val:"$"+fmt(nP),hi:false},{label:"Net per "+sg+" (no packaging)",val:"$"+fmt(nU),hi:false}].map(({label,val,hi})=>(
                 <div key={label} style={{background:hi?"#f0fdf4":navy,border:hi?"1.5px solid "+gbor:"1.5px solid rgba(255,255,255,.08)",borderRadius:12,padding:"1rem 1.25rem"}}>
                   <div style={{fontSize:11,color:hi?green:"#94a3b8",marginBottom:4,fontWeight:500}}>{label}</div>
                   <div style={{fontSize:20,fontWeight:700,color:hi?gdim:"#fff"}}>{val}</div>
@@ -597,16 +532,14 @@ export default function App(){
                 </tr></thead>
                 <tbody>
                   {mkRows(R,p,isReb).map(([label,a,b,border,hi,bold],i)=>{
-                    const isRebRow=false;                    const isFeeRow=label==="Less packaging fee (pre-tax cost)";
-                    const bVal=isFeeRow?b:b;
+                    const isRebRow=false;
+                    const isFeeRow=label==="Less packaging fee (pre-tax cost)";
                     return(
                       <tr key={i} style={{borderTop:border?"2px solid #e2e8f0":"1px solid #f1f5f9",background:bold?"#f8fafc":hi?"rgba(34,197,94,.04)":undefined}}>
                         <td style={{padding:"8px 0",color:hi?"#475569":"#64748b",fontWeight:bold?600:400}}>{label}</td>
-                        <td style={{textAlign:"right",padding:"8px 8px",color:bold?"#1e293b":"#475569",fontWeight:bold?600:400}}>
-                          {a!=null&&Math.abs(a)>0?"$"+fmt(Math.abs(a)):"-"}
-                        </td>
-                        <td style={{textAlign:"right",padding:"8px 8px",background:"#f0fdf4",color:bold?gdim:isRebRow?gdim:isFeeRow?"#dc2626":hi?gdim:"#475569",fontWeight:bold||isRebRow?700:400}}>
-                          {bVal!=null&&Math.abs(bVal)>0?(isRebRow||isFeeRow?"($"+fmt(Math.abs(bVal))+")" :"$"+fmt(Math.abs(bVal))):"-"}
+                        <td style={{textAlign:"right",padding:"8px 8px",color:bold?"#1e293b":"#475569",fontWeight:bold?600:400}}>{a!=null&&Math.abs(a)>0?"$"+fmt(Math.abs(a)):"-"}</td>
+                        <td style={{textAlign:"right",padding:"8px 8px",background:"#f0fdf4",color:bold?gdim:isFeeRow?"#dc2626":hi?gdim:"#475569",fontWeight:bold?700:400}}>
+                          {b!=null&&Math.abs(b)>0?(isFeeRow?"($"+fmt(Math.abs(b))+")":"$"+fmt(Math.abs(b))):"-"}
                         </td>
                       </tr>
                     );
@@ -621,14 +554,14 @@ export default function App(){
                   {["Benefit","Description","Monthly","Pre-tax","Post-tax","Notes"].map(h=><th key={h} style={{textAlign:["Monthly","Pre-tax","Post-tax"].includes(h)?"right":"left",padding:"6px",color:"#64748b",fontWeight:500,fontSize:12}}>{h}</th>)}
                 </tr></thead>
                 <tbody>
-                  {R.LI.map((li,i)=>(
+                  {R.LI.filter(li=>!li.isFee).map((li,i)=>(
                     <tr key={i} style={{borderBottom:"1px solid #f1f5f9"}}>
                       <td style={{padding:"8px 6px",color:"#1e293b"}}>{li.bt.label}</td>
                       <td style={{padding:"8px 6px",color:"#64748b"}}>{li.description||"-"}</td>
-                      <td style={{textAlign:"right",padding:"8px 6px"}}>{li.isFee?"$"+fmt(li.perCycleFeeIncGST)+" /"+cyc.singular:"$"+fmt(li.mon)}</td>
-                      <td style={{textAlign:"right",padding:"8px 6px",color:gdim,fontWeight:500}}>{li.isFee?"$"+fmt(li.perCycleFeeExGST):"$"+fmt(li.pre)}</td>
-                      <td style={{textAlign:"right",padding:"8px 6px",color:li.post>0?"#475569":"#cbd5e1"}}>{li.isFee?"-":li.post>0?"$"+fmt(li.post):"-"}</td>
-                      <td style={{padding:"8px 6px",fontSize:11,color:"#94a3b8"}}>{li.isFee?"Annual fee $"+fmt(li.annualFeeIncGST)+" incl. GST $"+fmt(li.perCycleGST*(cyc.periods))+" - split over "+cyc.periods+" "+cyc.singular+"s":li.ld?"Accom $"+fmt(li.ld.accom/12)+"/mth Food $"+fmt(li.ld.food/12)+"/mth":li.rt==="half"?"50pct pre 50pct post-tax (s.60)":li.bt.ref}</td>
+                      <td style={{textAlign:"right",padding:"8px 6px"}}>${fmt(li.mon)}</td>
+                      <td style={{textAlign:"right",padding:"8px 6px",color:gdim,fontWeight:500}}>${fmt(li.pre)}</td>
+                      <td style={{textAlign:"right",padding:"8px 6px",color:li.post>0?"#475569":"#cbd5e1"}}>{li.post>0?"$"+fmt(li.post):"-"}</td>
+                      <td style={{padding:"8px 6px",fontSize:11,color:"#94a3b8"}}>{li.ld?"Accom $"+fmt(li.ld.accom/12)+"/mth Food $"+fmt(li.ld.food/12)+"/mth":li.rt==="half"?"50pct pre 50pct post-tax (s.60)":li.bt.ref}</td>
                     </tr>
                   ))}
                   <tr style={{borderTop:"2px solid #e2e8f0",fontWeight:600}}>
@@ -659,14 +592,8 @@ export default function App(){
                 ))}
               </tbody>
             </table>
-            {/* KPI saving cards */}
             <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10,marginBottom:20}}>
-              {[
-                {label:"Annual tax saving",val:"$"+fmt(R.saving),hi:true},
-                {label:"Saving per "+cyc.singular,val:"$"+fmt((R.newP.tNet-R.noP.net)*(12/cyc.periods)),hi:true},
-                {label:"Net per "+cyc.singular+" (packaged)",val:"$"+fmt(R.newP.tNet*(12/cyc.periods)),hi:false},
-                {label:"Net per "+cyc.singular+" (no packaging)",val:"$"+fmt(R.noP.net*(12/cyc.periods)),hi:false},
-              ].map(({label,val,hi})=>(
+              {[{label:"Annual tax saving",val:"$"+fmt(R.saving),hi:true},{label:"Saving per "+cyc.singular,val:"$"+fmt((R.newP.tNet-R.noP.net)*(12/cyc.periods)),hi:true},{label:"Net per "+cyc.singular+" (packaged)",val:"$"+fmt(R.newP.tNet*(12/cyc.periods)),hi:false},{label:"Net per "+cyc.singular+" (no packaging)",val:"$"+fmt(R.noP.net*(12/cyc.periods)),hi:false}].map(({label,val,hi})=>(
                 <div key={label} style={{background:hi?"#f0fdf4":"#f8fafc",border:"1.5px solid "+(hi?gbor:"#e2e8f0"),borderRadius:10,padding:"10px 14px"}}>
                   <div style={{fontSize:11,color:hi?green:"#64748b",marginBottom:3,fontWeight:500}}>{label}</div>
                   <div style={{fontSize:18,fontWeight:700,color:hi?gdim:"#1e293b"}}>{val}</div>
@@ -694,9 +621,8 @@ export default function App(){
                 </div>
               </div>
             ))}
-            {/* Packaging fee box */}
             {R.LI.find(l=>l.isFee)&&(()=>{const fi=R.LI.find(l=>l.isFee);return(
-              <div style={{border:"1.5px solid #e2e8f0",borderRadius:10,overflow:"hidden",marginBottom:8}}>
+              <div style={{border:"1.5px solid #e2e8f0",borderRadius:10,overflow:"hidden",marginBottom:16}}>
                 <div style={{background:navy,padding:"8px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <span style={{fontSize:12,fontWeight:600,color:"#fff"}}>Packaging Administration Fee</span>
                   <span style={{fontSize:12,color:"#94a3b8"}}>Annual fee incl. GST</span>
@@ -705,7 +631,7 @@ export default function App(){
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,fontSize:12}}>
                     <div><div style={{color:"#94a3b8",marginBottom:2}}>Per {cyc.singular} (incl. GST)</div><div style={{color:"#1e293b",fontWeight:500}}>${fmt(fi.perCycleFeeIncGST)}</div></div>
                     <div><div style={{color:"#94a3b8",marginBottom:2}}>Annual (incl. GST)</div><div style={{color:"#1e293b",fontWeight:500}}>${fmt(fi.annualFeeIncGST)}</div></div>
-                    <div><div style={{color:"#94a3b8",marginBottom:2}}>GST component</div><div style={{color:"#1e293b"}}>${fmt(fi.perCycleGST*(cyc.periods))}/yr</div></div>
+                    <div><div style={{color:"#94a3b8",marginBottom:2}}>GST component</div><div style={{color:"#1e293b"}}>${fmt(fi.perCycleGST*cyc.periods)}/yr</div></div>
                   </div>
                 </div>
               </div>
@@ -715,15 +641,13 @@ export default function App(){
               <thead><tr style={{borderBottom:"1px solid #e2e8f0"}}><th style={{textAlign:"left",padding:"4px 0",color:"#94a3b8",fontWeight:500}}></th><th style={{textAlign:"right",color:"#94a3b8",fontWeight:500}}>No packaging</th><th style={{textAlign:"right",color:"#94a3b8",fontWeight:500}}>Proposed</th></tr></thead>
               <tbody>
                 {mkRows(R,cyc.periods,empType==="rebatable").map(([label,a,b,border,hi,bold],i)=>{
-                  const isRebRow=false;                  const isFeeRow=label==="Less packaging fee (pre-tax cost)";
+                  const isFeeRow=label==="Less packaging fee (pre-tax cost)";
                   return(
                     <tr key={i} style={{borderTop:border?"1px solid #e2e8f0":undefined}}>
                       <td style={{padding:"3px 0",color:bold?"#1e293b":"#64748b",fontWeight:bold?600:400}}>{label}</td>
-                      <td style={{textAlign:"right",color:bold?"#1e293b":"#475569",fontWeight:bold?600:400}}>
-                        {a!=null&&Math.abs(a)>0?"$"+fmt(Math.abs(a)):"-"}
-                      </td>
-                      <td style={{textAlign:"right",color:bold?gdim:isRebRow?gdim:isFeeRow?"#dc2626":"#475569",fontWeight:bold||isRebRow?700:400}}>
-                        {b!=null&&Math.abs(b)>0?(isRebRow||isFeeRow?"($"+fmt(Math.abs(b))+")":"$"+fmt(Math.abs(b))):"-"}
+                      <td style={{textAlign:"right",color:bold?"#1e293b":"#475569",fontWeight:bold?600:400}}>{a!=null&&Math.abs(a)>0?"$"+fmt(Math.abs(a)):"-"}</td>
+                      <td style={{textAlign:"right",color:bold?gdim:isFeeRow?"#dc2626":"#475569",fontWeight:bold?700:400}}>
+                        {b!=null&&Math.abs(b)>0?(isFeeRow?"($"+fmt(Math.abs(b))+")":"$"+fmt(Math.abs(b))):"-"}
                       </td>
                     </tr>
                   );
@@ -749,7 +673,7 @@ export default function App(){
         )}
 
         {tab==="docs"&&(()=>{
-          const benefitSubst=R.LI.map(li=>SUBST[li.bt.id]).filter(Boolean);
+          const benefitSubst=R.LI.filter(l=>!l.isFee).map(li=>SUBST[li.bt.id]).filter(Boolean);
           const uniqueSubst=[...new Map(benefitSubst.map(s=>[s.label,s])).values()];
           return(<>
             <div style={{background:gbg,border:"1px solid "+gbor,borderRadius:12,padding:"1rem 1.25rem",marginBottom:16,display:"flex",alignItems:"flex-start",gap:12}}>
