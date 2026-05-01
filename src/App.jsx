@@ -291,6 +291,8 @@ export default function App(){
 
   const R=useCallback(()=>{
     const cap=empType==="exempt"?XCAP:empType==="charity"?CCAP:empType==="rebatable"?RCAP:0;
+    // For rebatable: RCAP = ~$15,899/yr actual benefit value (grossed-up $30,000 cap)
+    // gU tracks annual benefit used against cap
     const remH=items.some(i=>i.typeId==="remote_housing"||i.typeId==="remote_rent");
     const monthlyFee=parseFloat(pkgFee)||0;
     let gU=0,mU=0,tMon=0,tGST=0,tAdd=0,tGross=0,tReb=0,tNet=0,tEmp=0;
@@ -304,14 +306,25 @@ export default function App(){
       if(mon<=0)continue;
       const ann=mon*12,isMeal=bt.cap==="meal",isNone=bt.cap==="none";
       let cAnn;
-      if(isNone)cAnn=ann;
-      else if(isMeal)cAnn=Math.min(ann,Math.max(0,MCAP-mU));
-      else{const gr=Math.max(0,cap-gU);cAnn=empType==="full"?ann:Math.min(ann,gr);}
+      if(isNone){
+        cAnn=ann;
+      } else if(isMeal){
+        cAnn=Math.min(ann,Math.max(0,MCAP-mU));
+      } else {
+        // cap is annual — genUsed tracks annual amounts
+        const genRem=Math.max(0,cap-gU);
+        cAnn=empType==="full"?ann:Math.min(ann,genRem);
+      }
       const c=cAnn/12;
       if(isMeal)mU+=cAnn;else if(!isNone)gU+=cAnn;
       const gst=bt.gst?(c/11):0;
       const fb=fbtBlock(c,bt.rt||"full",empType,isNone);
-      tMon+=fb.pre+fb.emp;tGST+=gst;tGross+=fb.gross;tReb+=fb.rebAmt;tNet+=fb.net;tEmp+=fb.emp;
+      tMon+=fb.pre+fb.emp;
+      tGST+=gst;
+      tGross+=fb.gross;
+      tReb+=fb.rebAmt;
+      tNet+=fb.net;
+      tEmp+=fb.emp;
       if(!bt.isLafha)tAdd+=fb.pre;
       LI.push({...item,bt,mon:c,pre:fb.pre,post:fb.post,rt:bt.rt||null,ann:cAnn,gst,xGross:fb.gross,xReb:fb.rebAmt,xNet:fb.net,xEmp:fb.emp,ld,reqMon:mon,atCap:!isNone&&cAnn<ann});
     }
@@ -342,6 +355,8 @@ export default function App(){
       });
     }
     const aDed=tMon*12,aGST=tGST*12,tInc=Math.max(0,gross-aDed);
+    // Verify: tGross/tReb/tNet are monthly totals stored in newP as /12 of annual
+    // mkRows scales by 12/p so weekly = monthly × 12/52
     const txN=cTax(gross)-cLITO(gross)+cMed(gross);
     const txP=cTax(tInc)-cLITO(tInc)+cMed(tInc);
     const hN=helpDebt?cHELP(gross):0,hP=helpDebt?cHELP(tInc):0;
@@ -351,7 +366,9 @@ export default function App(){
     const tN=nP+tAdd-(annFeeExGST/12);
     return{LI,aDed,aGST,saving:(tN-nN)*12,
       noP:{sal:gross/12,tax:txN/12,hlp:hN/12,net:nN},
-      newP:{sal:gross/12,ben:aDed/12,gst:aGST/12,tInc:tInc/12,tax:txP/12,hlp:hP/12,xGross:tGross/12,xReb:tReb/12,xNet:tNet/12,xEmp:tEmp/12,net:nP,add:tAdd,tNet:tN}};
+      newP:{sal:gross/12,ben:aDed/12,gst:aGST/12,tInc:tInc/12,tax:txP/12,hlp:hP/12,
+        xGross:tGross,xReb:tReb,xNet:tNet,xEmp:tEmp,
+        net:nP,add:tAdd,tNet:tN}};
   },[gross,empType,helpDebt,items,pkgFee])();
 
   const SH=({icon,title,step})=>(
@@ -362,17 +379,28 @@ export default function App(){
   );
 
   const mkRows=(r,p,isReb)=>{
-    const s=v=>v!=null?v*(12/p):null;
-    const rows=[["Salary",s(r.noP.sal),s(r.newP.sal)],["TEC",s(r.noP.sal),s(r.newP.sal)],["Benefits pre-tax",null,s(r.newP.ben),false,true],["GST paid by employer",null,s(r.newP.gst)]];
+    const s=v=>v!=null&&v!==0?v*(12/p):null;
+    const rows=[
+      ["Salary",s(r.noP.sal),s(r.newP.sal)],
+      ["TEC",s(r.noP.sal),s(r.newP.sal)],
+      ["Benefits pre-tax",null,s(r.newP.ben),false,true],
+      ["GST paid by employer",null,s(r.newP.gst)],
+    ];
     if(isReb)rows.push(["Employee FBT contribution pre-tax",null,s(r.newP.xEmp),false,true]);
     rows.push(["Taxable income",s(r.noP.sal),s(r.newP.tInc),true]);
     rows.push(["Income tax and Medicare",s(r.noP.tax),s(r.newP.tax)]);
-    if(isReb){rows.push(["FBT payable gross",null,s(r.newP.xGross)]);rows.push(["FBT rebate (47%)",null,r.newP.xReb>0?-s(r.newP.xReb):null]);rows.push(["Net FBT cost to employee",null,s(r.newP.xNet)]);}
-    else{rows.push(["FBT payable",null,s(r.newP.xGross)]);}
+    if(isReb){
+      rows.push(["FBT payable gross",null,s(r.newP.xGross)]);
+      rows.push(["FBT rebate (47%)",null,r.newP.xReb>0?-s(r.newP.xReb):null]);
+      rows.push(["Net FBT cost to employee",null,s(r.newP.xNet)]);
+    } else {
+      rows.push(["FBT payable",null,s(r.newP.xGross)]);
+    }
     rows.push(["HELP debt",helpDebt?s(r.noP.hlp):null,helpDebt?s(r.newP.hlp):null]);
     rows.push(["Net income",s(r.noP.net),s(r.newP.net),true]);
     rows.push(["Add back benefits",null,s(r.newP.add),false,true]);
-    rows.push(["Less packaging fee (pre-tax cost)",null,s(-R.LI.find(l=>l.isFee)?.pre||0)]);
+    const feeLi=R.LI.find(l=>l.isFee);
+    if(feeLi)rows.push(["Less packaging fee (pre-tax cost)",null,-(feeLi.perCycleFeeExGST)]);
     rows.push(["Total net income",s(r.noP.net),s(r.newP.tNet),true,false,true]);
     return rows;
   };
