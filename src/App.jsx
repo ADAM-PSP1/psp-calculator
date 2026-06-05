@@ -313,10 +313,13 @@ export default function App(){
     const nN=(gross-txN-hN)/12,nP=(tInc-txP-hP)/12;
     const feeLI=LI.find(l=>l.isFee);
     const feeAnnExGST=feeLI?feeLI.ann:0;
-    // tNet = after-tax net + benefit addbacks - packaging fee cost
-    // For full FBT payable employers FBT gross is already deducted via tMon (tInc includes it)
+    // tNet = net after tax + benefit addbacks - packaging fee
+    // addback = benefits received back (value to employee)
+    // for full FBT: FBT is employer cost, not deducted from employee
+    // for rebatable: net FBT (tEmp) already deducted via tMon so taxable income is correct
     const tN=nP+tAdd-(feeAnnExGST/12);
-    return{LI,aDed,aGST,saving:(tN-nN)*12,
+    const saving=(tN-nN)*12;
+    return{LI,aDed,aGST,saving,
       noP:{sal:gross/12,tax:txN/12,hlp:hN/12,net:nN},
       newP:{sal:gross/12,ben:aBen/12,gst:aGST/12,tInc:tInc/12,tax:txP/12,hlp:hP/12,xGross:tGross,xReb:tReb,xNet:tNet,xEmp:tEmp,net:nP,add:tAdd,tNet:tN}};
   },[gross,empType,helpDebt,items,pkgFee,cyc])();
