@@ -270,7 +270,9 @@ export default function App(){
       if(bt.isLafha){const x=calcLafha(item.lafha);ld=x;mon=x.total/12;}
       else{mon=(parseFloat(item.monthlyAmount)||0)/12;}
       if(mon<=0)continue;
+      // item.monthlyAmount is now stored as annual — mon = annual/12
       const limitN=item.limitCycles&&parseInt(item.limitCyclesNum)>0?Math.min(parseInt(item.limitCyclesNum),cyc.periods):null;
+      // If limited cycles: annual impact = per-cycle amount × cycles used
       const iAnn=limitN?(mon*(12/cyc.periods)*limitN):mon*12;
       const isMeal=bt.cap==="meal";
       const isNone=bt.cap==="none";
@@ -283,6 +285,9 @@ export default function App(){
       if(isMeal)mU+=cAnn;else if(!isNone)gU+=cAnn;
       const gst=bt.gst?(c/11):0;
       const fb=fbtBlock(c,bt.rt||"full",bt.gst,empType,isNoCap);
+      // For full FBT: employer pays FBT directly — it is NOT a pre-tax employee deduction
+      // Only add the benefit (c) to tMon for full FBT — the FBT is employer cost
+      // For rebatable: add both benefit (c) and net FBT employee contribution (fb.emp)
       tMon+=c+fb.emp;
       tGST+=gst;
       tGross+=fb.gross;
@@ -307,7 +312,10 @@ export default function App(){
     const hN=helpDebt?cHELP(gross):0,hP=helpDebt?cHELP(tInc):0;
     const nN=(gross-txN-hN)/12,nP=(tInc-txP-hP)/12;
     const feeLI=LI.find(l=>l.isFee);
-    const tN=nP+tAdd-(feeLI?feeLI.ann/12:0);
+    const feeAnnExGST=feeLI?feeLI.ann:0;
+    // tNet = after-tax net + benefit addbacks - packaging fee cost
+    // For full FBT payable employers FBT gross is already deducted via tMon (tInc includes it)
+    const tN=nP+tAdd-(feeAnnExGST/12);
     return{LI,aDed,aGST,saving:(tN-nN)*12,
       noP:{sal:gross/12,tax:txN/12,hlp:hN/12,net:nN},
       newP:{sal:gross/12,ben:aBen/12,gst:aGST/12,tInc:tInc/12,tax:txP/12,hlp:hP/12,xGross:tGross,xReb:tReb,xNet:tNet,xEmp:tEmp,net:nP,add:tAdd,tNet:tN}};
@@ -341,8 +349,7 @@ export default function App(){
     rows.push(["HELP debt",helpDebt?s(r.noP.hlp):null,helpDebt?s(r.newP.hlp):null]);
     rows.push(["Net income",s(r.noP.net),s(r.newP.net),true]);
     rows.push(["Add back benefits",null,s(r.newP.add),false,true]);
-    if(feeLi)rows.push(["Less packaging fee (pre-tax cost)",null,-(feeLi.perCycleFeeExGST)]);
-    rows.push(["Total net income",s(r.noP.net),s(r.newP.tNet),true,false,true]);
+    if(feeLi)rows.push(["Less packaging fee (pre-tax cost)",null,-(feeLi.ann/p)]);    rows.push(["Total net income",s(r.noP.net),s(r.newP.tNet),true,false,true]);
     return rows;
   };
 
@@ -426,8 +433,8 @@ export default function App(){
               const bt=BTS.find(b=>b.id===item.typeId);
               const isRem=RIDS.includes(item.typeId);
               const capLim=getCapLim(bt,empType);
-              const iMon=parseFloat(item.monthlyAmount)||0;
-              const iAnn=iMon;
+              const iMon=parseFloat(item.monthlyAmount)||0; // stored as annual
+              const iAnn=iMon; // already annual
               const accelN=item.accelerate&&parseInt(item.accelerateCycles)>0?Math.min(parseInt(item.accelerateCycles),cyc.periods):null;
               const effCap=capLim?Math.min(iAnn,capLim):iAnn;
               const perCyc=accelN?effCap/accelN:effCap/cyc.periods;
@@ -477,7 +484,7 @@ export default function App(){
                   {capLim&&!bt.isLafha&&(
                     <div style={{marginTop:8,background:item.accelerate?gbg:"#f8fafc",border:"1px solid "+(item.accelerate?gbor:"#e2e8f0"),borderRadius:8,padding:"10px 12px"}}>
                       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:item.accelerate?10:0}}>
-                        <input type="checkbox" checked={item.accelerate||false} onChange={e=>{upd(item.id,"accelerate",e.target.checked);if(item.limitCycles)upd(item.id,"limitCycles",false);}} style={{width:14,height:14,accentColor:green}}/>
+                        <input type="checkbox" checked={item.accelerate||false} onChange={e=>upd(item.id,"accelerate",e.target.checked)} style={{width:14,height:14,accentColor:green}}/>
                         <label style={{fontSize:12,fontWeight:500,color:"#1e293b",cursor:"pointer"}}>Accelerate - package full cap over fewer pay cycles</label>
                       </div>
                       {item.accelerate&&(
@@ -499,6 +506,7 @@ export default function App(){
                       )}
                     </div>
                   )}
+                  {/* Limited cycles option */}
                   {!bt.isLafha&&(
                     <div style={{marginTop:8,background:item.limitCycles?gbg:"#f8fafc",border:"1px solid "+(item.limitCycles?gbor:"#e2e8f0"),borderRadius:8,padding:"10px 12px"}}>
                       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:item.limitCycles?10:0}}>
@@ -524,7 +532,7 @@ export default function App(){
                               </div>
                             </div>
                             <div style={{gridColumn:"1/-1",fontSize:11,color:"#64748b",background:"#fff",borderRadius:6,padding:"6px 10px",border:"1px solid #e2e8f0"}}>
-                              Deduction of ${fmt(perCycAmt)} will run for {lN} {cyc.singular}{lN>1?"s":""} totalling ${fmt(totalAmt)}. Instruct payroll to cease after {lN} {cyc.singular}{lN>1?"s":""}.
+                              Deduction of ${fmt(perCycAmt*(12/cyc.periods))} will run for {lN} {cyc.singular}{lN>1?"s":""} totalling ${fmt(totalAmt)}. Instruct payroll to cease after {lN} {cyc.singular}{lN>1?"s":""}.
                             </div>
                           </div>
                         );
@@ -566,6 +574,7 @@ export default function App(){
                 </tr></thead>
                 <tbody>
                   {mkRows(R,p,isReb).map(([label,a,b,border,hi,bold],i)=>{
+                    const isRebRow=false;
                     const isFeeRow=label==="Less packaging fee (pre-tax cost)";
                     return(
                       <tr key={i} style={{borderTop:border?"2px solid #e2e8f0":"1px solid #f1f5f9",background:bold?"#f8fafc":hi?"rgba(34,197,94,.04)":undefined}}>
@@ -584,23 +593,23 @@ export default function App(){
               <h3 style={{margin:"0 0 1rem",fontSize:15,fontWeight:600,color:"#1e293b"}}>Benefit items</h3>
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
                 <thead><tr style={{borderBottom:"2px solid #e2e8f0"}}>
-                  {["Benefit","Description","Per "+sg,"Annual","Notes"].map(h=><th key={h} style={{textAlign:["Per "+sg,"Annual"].includes(h)?"right":"left",padding:"6px",color:"#64748b",fontWeight:500,fontSize:12}}>{h}</th>)}
+                  {["Benefit","Description","Monthly","Pre-tax","Post-tax","Notes"].map(h=><th key={h} style={{textAlign:["Monthly","Pre-tax","Post-tax"].includes(h)?"right":"left",padding:"6px",color:"#64748b",fontWeight:500,fontSize:12}}>{h}</th>)}
                 </tr></thead>
                 <tbody>
                   {R.LI.filter(li=>!li.isFee).map((li,i)=>(
                     <tr key={i} style={{borderBottom:"1px solid #f1f5f9"}}>
                       <td style={{padding:"8px 6px",color:"#1e293b"}}>{li.bt.label}</td>
                       <td style={{padding:"8px 6px",color:"#64748b"}}>{li.description||"-"}</td>
-                      <td style={{textAlign:"right",padding:"8px 6px"}}>${fmt(li.mon*(12/cyc.periods))}</td>
-                      <td style={{textAlign:"right",padding:"8px 6px"}}>${fmt(li.ann)}</td>
+                      <td style={{textAlign:"right",padding:"8px 6px"}}>${fmt(li.mon)}</td>
+                      <td style={{textAlign:"right",padding:"8px 6px",color:gdim,fontWeight:500}}>${fmt(li.pre)}</td>
+                      <td style={{textAlign:"right",padding:"8px 6px",color:li.post>0?"#475569":"#cbd5e1"}}>{li.post>0?"$"+fmt(li.post):"-"}</td>
                       <td style={{padding:"8px 6px",fontSize:11,color:"#94a3b8"}}>{li.ld?"Accom $"+fmt(li.ld.accom/12)+"/mth Food $"+fmt(li.ld.food/12)+"/mth":li.limitCycles?"One-off: "+li.limitCyclesNum+" "+cyc.singular+(parseInt(li.limitCyclesNum)>1?"s":"")+" only":li.rt==="half"?"50pct pre 50pct post-tax (s.60)":li.bt.ref}</td>
                     </tr>
                   ))}
                   <tr style={{borderTop:"2px solid #e2e8f0",fontWeight:600}}>
                     <td colSpan={2} style={{padding:"8px 6px"}}>Total</td>
-                    <td style={{textAlign:"right",padding:"8px 6px"}}>${fmt(R.aDed/cyc.periods)}</td>
-                    <td style={{textAlign:"right",padding:"8px 6px"}}>${fmt(R.aDed)}</td>
-                    <td></td>
+                    <td style={{textAlign:"right",padding:"8px 6px"}}>${fmt(R.aDed/12)}</td>
+                    <td colSpan={3}></td>
                   </tr>
                 </tbody>
               </table>
